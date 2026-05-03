@@ -18,14 +18,14 @@ import { toast } from "sonner";
 export default function WorkerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const worker = useStore((s) => s.workers.find((w) => w.id === id));
-  const customers = useStore((s) => s.customers.filter((c) => !c.archived));
+  const allWorkers = useStore((s) => s.workers);
   const allCustomers = useStore((s) => s.customers);
-  const sessions = useStore((s) =>
-    s.sessions
-      .filter((x) => x.workerId === id)
-      .sort((a, b) => b.startAt - a.startAt),
-  );
+  const allSessions = useStore((s) => s.sessions);
+  const worker = allWorkers.find((w) => w.id === id);
+  const customers = allCustomers.filter((c) => !c.archived);
+  const sessions = allSessions
+    .filter((x) => x.workerId === id)
+    .sort((a, b) => b.startAt - a.startAt);
   const now = useNow();
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);

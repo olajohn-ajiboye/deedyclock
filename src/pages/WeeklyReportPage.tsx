@@ -171,6 +171,11 @@ export default function WeeklyReportPage() {
               }))
               .sort((a, b) => b.ms - a.ms);
 
+            const weeklyEarned =
+              typeof w.hourlyRate === "number" && w.hourlyRate > 0
+                ? (wTotal / 3_600_000) * w.hourlyRate
+                : null;
+
             return (
               <div
                 key={w.id}
@@ -194,6 +199,11 @@ export default function WeeklyReportPage() {
                     <p className="font-display text-3xl font-semibold tabular-nums">
                       {formatDuration(wTotal)}
                     </p>
+                    {weeklyEarned !== null && (
+                      <p className="mt-1 text-sm font-medium tabular-nums text-muted-foreground">
+                        ${weeklyEarned.toFixed(2)} earned
+                      </p>
+                    )}
                   </div>
                 </div>
 

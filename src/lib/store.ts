@@ -189,6 +189,47 @@ export const store = {
     }));
   },
 
+  // Replace entire customer list (used by Square sync). Archives any local
+  // customers without a squareId match, and merges existing entries by squareId
+  // to preserve their stable color and id.
+  replaceCustomersFromSquare(
+    incoming: Array<{ squareId: string; name: string; phone?: string; note?: string; email?: string }>,
+  ) {
+    setState((s) => {
+      const bySquareId = new Map(
+        s.customers.filter((c) => c.squareId).map((c) => [c.squareId!, c]),
+      );
+      const next: Customer[] = incoming.map((sq, i) => {
+        const existing = bySquareId.get(sq.squareId);
+        if (existing) {
+          return {
+            ...existing,
+            name: sq.name,
+            phone: sq.phone,
+            note: sq.note,
+            email: sq.email,
+            archived: false,
+          };
+        }
+        return {
+          id: crypto.randomUUID(),
+          name: sq.name,
+          phone: sq.phone,
+          note: sq.note,
+          email: sq.email,
+          color: pickColor(i + 3),
+          squareId: sq.squareId,
+        };
+      });
+      // Keep local-only customers (no squareId) referenced by sessions, archived.
+      const referencedIds = new Set(s.sessions.map((x) => x.customerId));
+      const localKept = s.customers
+        .filter((c) => !c.squareId && referencedIds.has(c.id))
+        .map((c) => ({ ...c, archived: true }));
+      return { ...s, customers: [...next, ...localKept] };
+    });
+  },
+
   resetAll() {
     state = seed();
     persist();

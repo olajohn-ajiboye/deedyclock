@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -10,28 +11,36 @@ import CustomersPage from "./pages/CustomersPage";
 import WorkersPage from "./pages/WorkersPage";
 import WeeklyReportPage from "./pages/WeeklyReportPage";
 import NotFound from "./pages/NotFound.tsx";
+import { syncCustomersFromSquare } from "@/lib/squareSync";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<WorkerGridPage />} />
-            <Route path="/worker/:id" element={<WorkerDetailPage />} />
-            <Route path="/customers" element={<CustomersPage />} />
-            <Route path="/workers" element={<WorkersPage />} />
-            <Route path="/report" element={<WeeklyReportPage />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    // Auto-sync clients from Square on app load
+    syncCustomersFromSquare({ silent: true }).catch(() => {});
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<WorkerGridPage />} />
+              <Route path="/worker/:id" element={<WorkerDetailPage />} />
+              <Route path="/customers" element={<CustomersPage />} />
+              <Route path="/workers" element={<WorkersPage />} />
+              <Route path="/report" element={<WeeklyReportPage />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

@@ -61,12 +61,11 @@ export default function WeeklyReportPage() {
         .sort((a, b) => a.startAt - b.startAt)
         .map((s) => {
           const w = workers.find((x) => x.id === s.workerId);
-          const c = customers.find((x) => x.id === s.customerId);
           const ms = durationMs(s, now);
           return [
             format(new Date(s.startAt), "yyyy-MM-dd"),
             w?.name ?? "",
-            c?.name ?? "",
+            s.customerName,
             format(new Date(s.startAt), "HH:mm"),
             s.endAt ? format(new Date(s.endAt), "HH:mm") : "active",
             (ms / 3600000).toFixed(2),
@@ -161,17 +160,20 @@ export default function WeeklyReportPage() {
               1,
             );
             // Per-customer breakdown
-            const perCust = new Map<string, { ms: number; count: number }>();
+            const perCust = new Map<string, { ms: number; count: number; name: string; squareId: string | null }>();
             wSessions.forEach((s) => {
-              const cur = perCust.get(s.customerId) ?? { ms: 0, count: 0 };
+              const key = s.customerSquareId ?? `name:${s.customerName}`;
+              const cur = perCust.get(key) ?? { ms: 0, count: 0, name: s.customerName, squareId: s.customerSquareId };
               cur.ms += durationMs(s, now);
               cur.count += 1;
-              perCust.set(s.customerId, cur);
+              perCust.set(key, cur);
             });
-            const breakdown = [...perCust.entries()]
-              .map(([cid, v]) => ({
-                customer: customers.find((c) => c.id === cid),
-                ...v,
+            const breakdown = [...perCust.values()]
+              .map((v) => ({
+                customer: v.squareId ? customers.find((c) => c.squareId === v.squareId) : undefined,
+                name: v.name,
+                ms: v.ms,
+                count: v.count,
               }))
               .sort((a, b) => b.ms - a.ms);
 

@@ -22,7 +22,10 @@ export interface Customer {
 export interface Session {
   id: ID;
   workerId: ID;
-  customerId: ID;
+  /** Square customer id snapshot (preferred for lookups). */
+  customerSquareId: string | null;
+  /** Snapshot of the customer's name at the time of the session. */
+  customerName: string;
   startAt: number; // ms epoch
   endAt: number | null;
   createdAt: number;
@@ -33,4 +36,5 @@ export interface DBState {
   workers: Worker[];
   customers: Customer[];
   sessions: Session[];
+  loaded: boolean;
 }

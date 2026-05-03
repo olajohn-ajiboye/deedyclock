@@ -45,9 +45,7 @@ export default function WorkerGridPage() {
           const active = sessions.find(
             (s) => s.workerId === w.id && s.endAt === null,
           );
-          const activeCustomer = active
-            ? customers.find((c) => c.id === active.customerId)
-            : null;
+          const activeCustomerName = active?.customerName ?? null;
           const todayMs = sessions
             .filter((s) => s.workerId === w.id && s.startAt >= todayStart)
             .reduce((acc, s) => acc + durationMs(s, now), 0);
@@ -75,9 +73,9 @@ export default function WorkerGridPage() {
                   <p className="font-medium tabular-nums">
                     {formatDuration(todayMs)}
                   </p>
-                  {active && activeCustomer && (
+                  {active && activeCustomerName && (
                     <p className="text-xs text-success mt-1">
-                      with {activeCustomer.name}
+                      with {activeCustomerName}
                     </p>
                   )}
                 </div>

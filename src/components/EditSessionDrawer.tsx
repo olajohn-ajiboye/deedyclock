@@ -24,19 +24,18 @@ export function EditSessionDrawer({ sessionId, onClose }: Props) {
   const session = useStore((s) =>
     sessionId ? s.sessions.find((x) => x.id === sessionId) ?? null : null,
   );
-  const customers = useStore((s) => s.customers);
 
   const [startVal, setStartVal] = useState("");
   const [endVal, setEndVal] = useState("");
   const [stillActive, setStillActive] = useState(false);
-  const [customerId, setCustomerId] = useState<string>("");
+  const [customerName, setCustomerName] = useState("");
 
   useEffect(() => {
     if (!session) return;
     setStartVal(toLocalInput(session.startAt));
     setEndVal(session.endAt ? toLocalInput(session.endAt) : "");
     setStillActive(session.endAt === null);
-    setCustomerId(session.customerId);
+    setCustomerName(session.customerName);
   }, [session?.id]);
 
   if (!session) {
@@ -47,7 +46,7 @@ export function EditSessionDrawer({ sessionId, onClose }: Props) {
     );
   }
 
-  function handleSave() {
+  async function handleSave() {
     const startAt = fromLocalInput(startVal);
     const endAt = stillActive ? null : fromLocalInput(endVal);
     if (Number.isNaN(startAt)) {
@@ -58,16 +57,24 @@ export function EditSessionDrawer({ sessionId, onClose }: Props) {
       toast.error("End time must be after start time");
       return;
     }
-    store.updateSession(session!.id, { startAt, endAt, customerId });
-    toast.success("Session updated");
-    onClose();
+    try {
+      await store.updateSession(session!.id, { startAt, endAt, customerName: customerName.trim() });
+      toast.success("Session updated");
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    }
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!confirm("Delete this session? This cannot be undone.")) return;
-    store.deleteSession(session!.id);
-    toast.success("Session deleted");
-    onClose();
+    try {
+      await store.deleteSession(session!.id);
+      toast.success("Session deleted");
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
+    }
   }
 
   const previewMs = (() => {
@@ -92,19 +99,13 @@ export function EditSessionDrawer({ sessionId, onClose }: Props) {
 
           <div className="px-6 space-y-5 pb-2">
             <div className="space-y-2">
-              <Label htmlFor="customer">Client</Label>
-              <select
+              <Label htmlFor="customer">Client name</Label>
+              <Input
                 id="customer"
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                className="flex h-12 w-full rounded-xl border border-input bg-background px-3 text-base"
-              >
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.archived ? "(archived)" : ""}
-                  </option>
-                ))}
-              </select>
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="h-12 text-base"
+              />
             </div>
 
             <div className="space-y-2">

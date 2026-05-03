@@ -43,9 +43,7 @@ export default function WorkerDetailPage() {
   }
 
   const active = sessions.find((s) => s.endAt === null);
-  const activeCustomer = active
-    ? allCustomers.find((c) => c.id === active.customerId)
-    : null;
+  const activeCustomerName = active?.customerName ?? null;
 
   const todayStart = (() => {
     const d = new Date();
@@ -74,22 +72,26 @@ export default function WorkerDetailPage() {
     c.name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  function handleStart(customerId: string) {
+  function handleStart(customer: { id: string; squareId?: string; name: string }) {
     if (active) {
       toast.error("End the current session first.");
       return;
     }
-    store.startSession(worker!.id, customerId);
-    const c = customers.find((x) => x.id === customerId);
-    toast.success(`Started session with ${c?.name ?? "client"}`);
+    store
+      .startSession(worker!.id, { squareId: customer.squareId ?? null, name: customer.name })
+      .then(() => toast.success(`Started session with ${customer.name}`))
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to start"));
   }
 
   function handleEnd() {
     if (!active) return;
-    store.endSession(active.id);
-    toast.success(
-      `Logged ${formatDuration(durationMs(active, Date.now()))} for ${activeCustomer?.name ?? "client"}`,
-    );
+    const ms = durationMs(active, Date.now());
+    store
+      .endSession(active.id)
+      .then(() =>
+        toast.success(`Logged ${formatDuration(ms)} for ${activeCustomerName ?? "client"}`),
+      )
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to end"));
   }
 
   return (
@@ -134,7 +136,7 @@ export default function WorkerDetailPage() {
         </div>
       </header>
 
-      {active && activeCustomer && (
+      {active && activeCustomerName && (
         <section
           className="rounded-3xl p-8 text-primary-foreground shadow-[var(--shadow-elevated)] relative overflow-hidden"
           style={{ background: "var(--gradient-primary)" }}
@@ -147,7 +149,7 @@ export default function WorkerDetailPage() {
                 Now serving
               </p>
               <h3 className="font-display text-3xl font-semibold mt-1">
-                {activeCustomer.name}
+                {activeCustomerName}
               </h3>
               <p className="opacity-80 text-sm mt-1">
                 Started at {fmtTime(active.startAt)}
@@ -219,7 +221,7 @@ export default function WorkerDetailPage() {
                   {filteredCustomers.map((c, i) => (
                     <tr
                       key={c.id}
-                      onClick={() => handleStart(c.id)}
+                      onClick={() => handleStart({ id: c.id, squareId: c.squareId, name: c.name })}
                       className={cn(
                         "cursor-pointer hover:bg-muted/40 transition-colors",
                         i > 0 && "border-t border-border",
@@ -239,7 +241,7 @@ export default function WorkerDetailPage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleStart(c.id);
+                            handleStart({ id: c.id, squareId: c.squareId, name: c.name });
                           }}
                           className="h-11 rounded-xl"
                         >
@@ -269,7 +271,11 @@ export default function WorkerDetailPage() {
             </div>
           )}
           {todaySessions.map((s, i) => {
-            const c = allCustomers.find((x) => x.id === s.customerId);
+            const c = s.customerSquareId
+              ? allCustomers.find((x) => x.squareId === s.customerSquareId)
+              : null;
+            const name = c?.name ?? s.customerName;
+            const color = c?.color ?? "0 0% 50%";
             return (
               <div
                 key={s.id}
@@ -279,13 +285,10 @@ export default function WorkerDetailPage() {
                   s.endAt === null && "bg-success/5",
                 )}
               >
-                <AvatarTile name={c?.name ?? "—"} color={c?.color ?? "0 0% 50%"} size="md" />
+                <AvatarTile name={name} color={color} size="md" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">
-                    {c?.name ?? "Unknown"}
-                    {c?.archived && (
-                      <span className="text-xs text-muted-foreground ml-2">(archived)</span>
-                    )}
+                    {name}
                   </p>
                   <p className="text-sm text-muted-foreground tabular-nums">
                     {fmtTime(s.startAt)} —{" "}

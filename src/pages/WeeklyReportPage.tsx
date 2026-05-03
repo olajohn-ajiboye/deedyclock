@@ -36,17 +36,21 @@ export default function WeeklyReportPage() {
   const topCustomer = (() => {
     const map = new Map<string, number>();
     weekSessions.forEach((s) => {
-      map.set(s.customerId, (map.get(s.customerId) ?? 0) + durationMs(s, now));
+      const key = s.customerSquareId ?? `name:${s.customerName}`;
+      map.set(key, (map.get(key) ?? 0) + durationMs(s, now));
     });
-    let topId: string | null = null;
+    let topKey: string | null = null;
     let topMs = 0;
     map.forEach((v, k) => {
       if (v > topMs) {
         topMs = v;
-        topId = k;
+        topKey = k;
       }
     });
-    return topId ? customers.find((c) => c.id === topId) : null;
+    if (!topKey) return null;
+    if (topKey.startsWith("name:")) return { name: topKey.slice(5) };
+    const c = customers.find((x) => x.squareId === topKey);
+    return c ?? { name: weekSessions.find((s) => s.customerSquareId === topKey)?.customerName ?? "—" };
   })();
 
   function handleExport() {
@@ -57,12 +61,11 @@ export default function WeeklyReportPage() {
         .sort((a, b) => a.startAt - b.startAt)
         .map((s) => {
           const w = workers.find((x) => x.id === s.workerId);
-          const c = customers.find((x) => x.id === s.customerId);
           const ms = durationMs(s, now);
           return [
             format(new Date(s.startAt), "yyyy-MM-dd"),
             w?.name ?? "",
-            c?.name ?? "",
+            s.customerName,
             format(new Date(s.startAt), "HH:mm"),
             s.endAt ? format(new Date(s.endAt), "HH:mm") : "active",
             (ms / 3600000).toFixed(2),
@@ -157,17 +160,20 @@ export default function WeeklyReportPage() {
               1,
             );
             // Per-customer breakdown
-            const perCust = new Map<string, { ms: number; count: number }>();
+            const perCust = new Map<string, { ms: number; count: number; name: string; squareId: string | null }>();
             wSessions.forEach((s) => {
-              const cur = perCust.get(s.customerId) ?? { ms: 0, count: 0 };
+              const key = s.customerSquareId ?? `name:${s.customerName}`;
+              const cur = perCust.get(key) ?? { ms: 0, count: 0, name: s.customerName, squareId: s.customerSquareId };
               cur.ms += durationMs(s, now);
               cur.count += 1;
-              perCust.set(s.customerId, cur);
+              perCust.set(key, cur);
             });
-            const breakdown = [...perCust.entries()]
-              .map(([cid, v]) => ({
-                customer: customers.find((c) => c.id === cid),
-                ...v,
+            const breakdown = [...perCust.values()]
+              .map((v) => ({
+                customer: v.squareId ? customers.find((c) => c.squareId === v.squareId) : undefined,
+                name: v.name,
+                ms: v.ms,
+                count: v.count,
               }))
               .sort((a, b) => b.ms - a.ms);
 
@@ -250,17 +256,17 @@ export default function WeeklyReportPage() {
                     <div className="space-y-2">
                       {breakdown.map((b) => (
                         <div
-                          key={b.customer?.id ?? "unknown"}
+                          key={b.customer?.id ?? b.name}
                           className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border"
                         >
                           <AvatarTile
-                            name={b.customer?.name ?? "—"}
+                            name={b.customer?.name ?? b.name}
                             color={b.customer?.color ?? "0 0% 50%"}
                             size="sm"
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">
-                              {b.customer?.name ?? "Unknown"}
+                              {b.customer?.name ?? b.name}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {b.count} {b.count === 1 ? "session" : "sessions"}
@@ -283,7 +289,6 @@ export default function WeeklyReportPage() {
                         .slice()
                         .sort((a, b) => a.startAt - b.startAt)
                         .map((s, i) => {
-                          const c = customers.find((x) => x.id === s.customerId);
                           return (
                             <div
                               key={s.id}
@@ -298,7 +303,7 @@ export default function WeeklyReportPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">
-                                  {c?.name ?? "Unknown"}
+                                  {s.customerName}
                                 </p>
                                 <p className="text-xs text-muted-foreground tabular-nums">
                                   {fmtTime(s.startAt)} —{" "}

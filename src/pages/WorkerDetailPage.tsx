@@ -43,9 +43,7 @@ export default function WorkerDetailPage() {
   }
 
   const active = sessions.find((s) => s.endAt === null);
-  const activeCustomer = active
-    ? allCustomers.find((c) => c.id === active.customerId)
-    : null;
+  const activeCustomerName = active?.customerName ?? null;
 
   const todayStart = (() => {
     const d = new Date();
@@ -74,22 +72,26 @@ export default function WorkerDetailPage() {
     c.name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  function handleStart(customerId: string) {
+  function handleStart(customer: { id: string; squareId?: string; name: string }) {
     if (active) {
       toast.error("End the current session first.");
       return;
     }
-    store.startSession(worker!.id, customerId);
-    const c = customers.find((x) => x.id === customerId);
-    toast.success(`Started session with ${c?.name ?? "client"}`);
+    store
+      .startSession(worker!.id, { squareId: customer.squareId ?? null, name: customer.name })
+      .then(() => toast.success(`Started session with ${customer.name}`))
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to start"));
   }
 
   function handleEnd() {
     if (!active) return;
-    store.endSession(active.id);
-    toast.success(
-      `Logged ${formatDuration(durationMs(active, Date.now()))} for ${activeCustomer?.name ?? "client"}`,
-    );
+    const ms = durationMs(active, Date.now());
+    store
+      .endSession(active.id)
+      .then(() =>
+        toast.success(`Logged ${formatDuration(ms)} for ${activeCustomerName ?? "client"}`),
+      )
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to end"));
   }
 
   return (

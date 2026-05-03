@@ -15,6 +15,8 @@ export interface Customer {
   note?: string;
   color: string;
   archived?: boolean;
+  squareId?: string;
+  email?: string;
 }
 
 export interface Session {

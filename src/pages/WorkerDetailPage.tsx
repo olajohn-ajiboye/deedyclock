@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTodayBookings } from "@/lib/squareBookings";
 
 export default function WorkerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -62,7 +63,14 @@ export default function WorkerDetailPage() {
 
   const todaySessions = sessions.filter((s) => s.startAt >= todayStart);
 
-  const filteredCustomers = customers.filter((c) =>
+  const { bookings, loading: bookingsLoading, error: bookingsError } = useTodayBookings();
+  const todaySquareIds = new Set(
+    (bookings ?? []).map((b) => b.customerId).filter(Boolean),
+  );
+  const todaysCustomers = customers.filter(
+    (c) => c.squareId && todaySquareIds.has(c.squareId),
+  );
+  const filteredCustomers = todaysCustomers.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -159,10 +167,14 @@ export default function WorkerDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
             <div>
               <h3 className="font-display text-2xl font-semibold">
-                Choose a client to start
+                Today's clients
               </h3>
               <p className="text-muted-foreground text-sm mt-1">
-                Tap a tile — the timer starts immediately.
+                {bookingsLoading
+                  ? "Loading appointments…"
+                  : bookingsError
+                    ? "Could not load appointments from Square."
+                    : `${todaysCustomers.length} ${todaysCustomers.length === 1 ? "client" : "clients"} booked today — tap to start.`}
               </p>
             </div>
             <div className="sm:ml-auto relative w-full sm:w-72">
@@ -170,7 +182,7 @@ export default function WorkerDetailPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search clients"
+                placeholder="Search today's clients"
                 className="pl-9 h-12 rounded-xl"
               />
             </div>
@@ -178,7 +190,13 @@ export default function WorkerDetailPage() {
           <div className="rounded-2xl border border-border bg-background overflow-hidden max-h-[480px] overflow-y-auto">
             {filteredCustomers.length === 0 ? (
               <div className="text-center text-muted-foreground py-10">
-                No clients match. <Link to="/customers" className="underline">Add one</Link>.
+                {bookingsLoading
+                  ? "Loading appointments…"
+                  : bookingsError
+                    ? "Couldn't load today's appointments from Square."
+                    : todaysCustomers.length === 0
+                      ? "No appointments scheduled for today."
+                      : "No clients match your search."}
               </div>
             ) : (
               <table className="w-full">

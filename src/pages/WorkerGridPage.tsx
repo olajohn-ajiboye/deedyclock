@@ -6,10 +6,9 @@ import { durationMs, formatDuration } from "@/lib/time";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 export default function WorkerGridPage() {
-  const { workers, sessions } = useStore((s) => ({
-    workers: s.workers.filter((w) => !w.archived),
-    sessions: s.sessions,
-  }));
+  const allWorkers = useStore((s) => s.workers);
+  const sessions = useStore((s) => s.sessions);
+  const workers = allWorkers.filter((w) => !w.archived);
   const customers = useStore((s) => s.customers);
   const now = useNow();
 

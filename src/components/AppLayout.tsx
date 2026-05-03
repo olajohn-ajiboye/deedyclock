@@ -12,15 +12,16 @@ const tabs = [
 ];
 
 export default function AppLayout() {
-  const active = useStore((s) =>
-    s.sessions
-      .filter((x) => x.endAt === null)
-      .map((x) => ({
-        session: x,
-        worker: s.workers.find((w) => w.id === x.workerId),
-        customer: s.customers.find((c) => c.id === x.customerId),
-      })),
-  );
+  const sessions = useStore((s) => s.sessions);
+  const workers = useStore((s) => s.workers);
+  const customers = useStore((s) => s.customers);
+  const active = sessions
+    .filter((x) => x.endAt === null)
+    .map((x) => ({
+      session: x,
+      worker: workers.find((w) => w.id === x.workerId),
+      customer: customers.find((c) => c.id === x.customerId),
+    }));
   const now = useNow();
   const location = useLocation();
 

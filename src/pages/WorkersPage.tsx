@@ -31,14 +31,14 @@ export default function WorkersPage() {
             Team
           </p>
           <h2 className="font-display text-4xl font-semibold tracking-tight">
-            Stylists & staff
+            Locticians
           </h2>
         </div>
         <Button
           onClick={() => setAdding(true)}
           className="sm:ml-auto h-12 rounded-xl px-5"
         >
-          <Plus className="w-4 h-4 mr-2" /> Add stylist
+          <Plus className="w-4 h-4 mr-2" /> Add loctician
         </Button>
       </header>
 
@@ -76,7 +76,7 @@ export default function WorkersPage() {
         onOpenChange={setAdding}
         onSubmit={(v) => {
           store.addWorker(v.name, v.hourlyRate);
-          toast.success("Stylist added");
+          toast.success("Loctician added");
         }}
       />
       <WorkerDialog
@@ -86,13 +86,13 @@ export default function WorkersPage() {
         onSubmit={(v) => {
           if (!editing) return;
           store.updateWorker(editing.id, v);
-          toast.success("Stylist updated");
+          toast.success("Loctician updated");
         }}
         onDelete={() => {
           if (!editing) return;
           if (!confirm(`Archive ${editing.name}? Past sessions are kept.`)) return;
           store.deleteWorker(editing.id);
-          toast.success("Stylist archived");
+          toast.success("Loctician archived");
           setEditing(null);
         }}
       />
@@ -127,10 +127,10 @@ function WorkerDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">
-            {initial ? "Edit stylist" : "Add stylist"}
+            {initial ? "Edit loctician" : "Add loctician"}
           </DialogTitle>
           <DialogDescription>
-            Stylists appear on the home grid for quick clock-in.
+            Locticians appear on the home grid for quick clock-in.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

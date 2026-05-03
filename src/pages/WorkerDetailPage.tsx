@@ -34,7 +34,7 @@ export default function WorkerDetailPage() {
   if (!worker) {
     return (
       <div className="text-center py-16">
-        <p className="text-muted-foreground">Stylist not found.</p>
+        <p className="text-muted-foreground">Loctician not found.</p>
         <Button onClick={() => navigate("/")} className="mt-4">
           Back
         </Button>
@@ -98,7 +98,7 @@ export default function WorkerDetailPage() {
         to="/"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="w-4 h-4" /> All stylists
+        <ArrowLeft className="w-4 h-4" /> All locticians
       </Link>
 
       <header className="flex flex-col sm:flex-row gap-6 items-start sm:items-end">

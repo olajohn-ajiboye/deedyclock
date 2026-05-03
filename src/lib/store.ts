@@ -3,15 +3,18 @@ import type { Customer, DBState, Session, Worker } from "./types";
 
 const STORAGE_KEY = "salon-hours.v1";
 
+/** deedylocs.ca theme-color #4e846c */
+export const DEEDYLOCS_SITE_GREEN = "152 26% 41%";
+
 const PALETTE = [
-  "326 38% 45%", // plum
-  "36 70% 55%", // gold
-  "152 35% 40%", // sage
-  "8 65% 55%", // terracotta
-  "210 45% 45%", // dusty blue
-  "280 30% 50%", // violet
-  "20 55% 50%", // copper
-  "180 30% 40%", // teal
+  "275 42% 48%", // purple (OreOluwa default lane)
+  DEEDYLOCS_SITE_GREEN,
+  "38 52% 54%", // honey accent
+  "8 58% 52%", // terracotta
+  "210 40% 48%", // dusty blue
+  "280 35% 52%", // violet
+  "32 45% 48%", // copper
+  "165 28% 42%", // deep teal
 ];
 
 export function pickColor(seedIndex: number) {
@@ -21,8 +24,8 @@ export function pickColor(seedIndex: number) {
 const seed = (): DBState => {
   const now = Date.now();
   const workers: Worker[] = [
-    { id: "w1", name: "OreOluwa", color: PALETTE[0] },
-    { id: "w2", name: "Deedy", color: PALETTE[1] },
+    { id: "w1", name: "OreOluwa", color: "275 45% 46%" },
+    { id: "w2", name: "Dami", color: DEEDYLOCS_SITE_GREEN },
   ];
   const customers: Customer[] = [
     { id: "c1", name: "Eleanor Park", color: PALETTE[4] },
@@ -54,6 +57,16 @@ const seed = (): DBState => {
   return { workers, customers, sessions };
 };
 
+function normalizeDeedySlotGreen(workers: Worker[]): Worker[] {
+  return workers.map((w) => {
+    const namedDeedy = w.name.trim().toLowerCase() === "deedy";
+    const seededSecondSlot = w.id === "w2";
+    if (!namedDeedy && !seededSecondSlot) return w;
+    if (w.color === DEEDYLOCS_SITE_GREEN) return w;
+    return { ...w, color: DEEDYLOCS_SITE_GREEN };
+  });
+}
+
 let state: DBState = load();
 const listeners = new Set<() => void>();
 
@@ -66,7 +79,16 @@ function load(): DBState {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
       return s;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw) as DBState;
+    const prevWorkers = parsed.workers ?? [];
+    const workers = normalizeDeedySlotGreen(prevWorkers);
+    const changed = workers.some((w, i) => w !== prevWorkers[i]);
+    if (changed) {
+      const next = { ...parsed, workers };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    }
+    return parsed;
   } catch {
     return seed();
   }

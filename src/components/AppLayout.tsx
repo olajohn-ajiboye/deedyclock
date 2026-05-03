@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const tabs = [
   { to: "/", label: "Clock In", icon: Clock3, end: true },
   { to: "/customers", label: "Customers", icon: Users },
-  { to: "/workers", label: "Workers", icon: UserRound },
+  { to: "/workers", label: "Locticians", icon: UserRound },
   { to: "/report", label: "Weekly", icon: BarChart3 },
 ];
 

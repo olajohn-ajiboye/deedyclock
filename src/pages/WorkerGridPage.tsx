@@ -25,7 +25,7 @@ export default function WorkerGridPage() {
           <p className="uppercase tracking-[0.2em] text-xs text-muted-foreground mb-2">
             Welcome to the floor
           </p>
-          <h2 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
             Tap your name to clock in.
           </h2>
           <p className="text-muted-foreground mt-2 max-w-xl">
@@ -35,7 +35,7 @@ export default function WorkerGridPage() {
         <div className="sm:ml-auto flex items-center gap-2 px-4 h-12 rounded-full bg-card border border-border text-sm shadow-[var(--shadow-card)]">
           <Sparkles className="w-4 h-4 text-accent" />
           <span className="text-muted-foreground">
-            {workers.length} stylists · {customers.filter((c) => !c.archived).length} clients
+            {workers.length} locticians · {customers.filter((c) => !c.archived).length} clients
           </span>
         </div>
       </section>
@@ -93,7 +93,7 @@ export default function WorkerGridPage() {
         >
           <div className="text-center">
             <div className="text-3xl font-display mb-1">+</div>
-            <div className="text-sm font-medium">Add stylist</div>
+            <div className="text-sm font-medium">Add loctician</div>
           </div>
         </Link>
       </div>

@@ -2,94 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Salon Hours design system — warm editorial. All colors HSL. */
+/* DeedyLocs-adjacent palette — theme-color #4e846c (hsl ~152 26% 41%). All colors HSL. */
 
 @layer base {
   :root {
     /* Surfaces */
-    --background: 36 38% 96%;          /* warm cream */
-    --foreground: 320 25% 14%;         /* deep aubergine ink */
+    --background: 100 22% 97%;
+    --foreground: 152 22% 15%;
 
-    --card: 36 50% 99%;
-    --card-foreground: 320 25% 14%;
+    --card: 100 30% 99%;
+    --card-foreground: 152 22% 15%;
 
-    --popover: 36 50% 99%;
-    --popover-foreground: 320 25% 14%;
+    --popover: 100 30% 99%;
+    --popover-foreground: 152 22% 15%;
 
-    /* Brand: deep plum + warm gold */
-    --primary: 326 38% 22%;            /* deep plum */
-    --primary-foreground: 36 50% 97%;
-    --primary-glow: 326 45% 35%;
+    /* Brand: DeedyLocs sage + warm accent */
+    --primary: 152 30% 36%;
+    --primary-foreground: 80 40% 98%;
+    --primary-glow: 152 26% 46%;
 
-    --secondary: 36 30% 90%;
-    --secondary-foreground: 320 25% 14%;
+    --secondary: 100 18% 92%;
+    --secondary-foreground: 152 22% 15%;
 
-    --muted: 36 25% 92%;
-    --muted-foreground: 320 10% 38%;
+    --muted: 100 16% 93%;
+    --muted-foreground: 152 12% 40%;
 
-    --accent: 36 70% 55%;              /* warm gold */
-    --accent-foreground: 320 30% 12%;
+    --accent: 38 52% 54%;
+    --accent-foreground: 152 25% 12%;
 
-    --success: 152 45% 35%;
-    --success-foreground: 36 50% 97%;
+    --success: 152 38% 38%;
+    --success-foreground: 80 40% 98%;
 
-    --danger: 8 65% 48%;
-    --danger-foreground: 36 50% 97%;
+    --danger: 8 62% 48%;
+    --danger-foreground: 80 40% 98%;
 
-    --destructive: 8 65% 48%;
-    --destructive-foreground: 36 50% 97%;
+    --destructive: 8 62% 48%;
+    --destructive-foreground: 80 40% 98%;
 
-    --border: 36 20% 84%;
-    --input: 36 20% 84%;
-    --ring: 326 38% 22%;
+    --border: 100 14% 86%;
+    --input: 100 14% 86%;
+    --ring: 152 30% 36%;
 
     --radius: 1rem;
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-warm: linear-gradient(160deg, hsl(36 50% 97%) 0%, hsl(36 38% 92%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(36 70% 60%), hsl(28 75% 50%));
+    --gradient-warm: linear-gradient(160deg, hsl(100 28% 98%) 0%, hsl(100 18% 93%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(38 55% 58%), hsl(32 50% 48%));
 
     /* Shadows */
-    --shadow-card: 0 1px 2px hsl(320 30% 14% / 0.04), 0 8px 24px -12px hsl(320 30% 14% / 0.12);
-    --shadow-elevated: 0 4px 12px -2px hsl(320 30% 14% / 0.08), 0 24px 48px -16px hsl(320 30% 14% / 0.18);
+    --shadow-card: 0 1px 2px hsl(152 22% 15% / 0.04), 0 8px 24px -12px hsl(152 22% 15% / 0.12);
+    --shadow-elevated: 0 4px 12px -2px hsl(152 22% 15% / 0.08), 0 24px 48px -16px hsl(152 22% 15% / 0.18);
     --shadow-glow: 0 0 0 4px hsl(var(--accent) / 0.18);
 
-    --sidebar-background: 36 38% 96%;
-    --sidebar-foreground: 320 25% 14%;
-    --sidebar-primary: 326 38% 22%;
-    --sidebar-primary-foreground: 36 50% 97%;
-    --sidebar-accent: 36 30% 90%;
-    --sidebar-accent-foreground: 320 25% 14%;
-    --sidebar-border: 36 20% 84%;
-    --sidebar-ring: 326 38% 22%;
+    --sidebar-background: 100 22% 97%;
+    --sidebar-foreground: 152 22% 15%;
+    --sidebar-primary: 152 30% 36%;
+    --sidebar-primary-foreground: 80 40% 98%;
+    --sidebar-accent: 100 18% 92%;
+    --sidebar-accent-foreground: 152 22% 15%;
+    --sidebar-border: 100 14% 86%;
+    --sidebar-ring: 152 30% 36%;
   }
 
   .dark {
-    --background: 320 20% 10%;
-    --foreground: 36 40% 94%;
-    --card: 320 22% 13%;
-    --card-foreground: 36 40% 94%;
-    --popover: 320 22% 13%;
-    --popover-foreground: 36 40% 94%;
-    --primary: 36 70% 60%;
-    --primary-foreground: 320 30% 12%;
-    --primary-glow: 36 80% 70%;
-    --secondary: 320 18% 18%;
-    --secondary-foreground: 36 40% 94%;
-    --muted: 320 18% 18%;
-    --muted-foreground: 36 15% 65%;
-    --accent: 36 70% 55%;
-    --accent-foreground: 320 30% 12%;
-    --success: 152 45% 45%;
-    --success-foreground: 36 50% 97%;
-    --danger: 8 65% 55%;
-    --danger-foreground: 36 50% 97%;
-    --destructive: 8 65% 55%;
-    --destructive-foreground: 36 50% 97%;
-    --border: 320 18% 22%;
-    --input: 320 18% 22%;
-    --ring: 36 70% 60%;
+    --background: 152 18% 10%;
+    --foreground: 45 28% 94%;
+    --card: 152 16% 13%;
+    --card-foreground: 45 28% 94%;
+    --popover: 152 16% 13%;
+    --popover-foreground: 45 28% 94%;
+    --primary: 152 32% 52%;
+    --primary-foreground: 152 22% 10%;
+    --primary-glow: 152 28% 60%;
+    --secondary: 152 14% 18%;
+    --secondary-foreground: 45 28% 94%;
+    --muted: 152 14% 18%;
+    --muted-foreground: 100 12% 68%;
+    --accent: 38 48% 58%;
+    --accent-foreground: 152 22% 10%;
+    --success: 152 40% 48%;
+    --success-foreground: 152 22% 10%;
+    --danger: 8 60% 54%;
+    --danger-foreground: 45 28% 94%;
+    --destructive: 8 60% 54%;
+    --destructive-foreground: 45 28% 94%;
+    --border: 152 12% 22%;
+    --input: 152 12% 22%;
+    --ring: 152 32% 52%;
   }
 }
 

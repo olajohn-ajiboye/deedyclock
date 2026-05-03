@@ -51,7 +51,7 @@ export default function WeeklyReportPage() {
 
   function handleExport() {
     const rows = [
-      ["Date", "Stylist", "Client", "Start", "End", "Hours"],
+      ["Date", "Loctician", "Client", "Start", "End", "Hours"],
       ...weekSessions
         .slice()
         .sort((a, b) => a.startAt - b.startAt)

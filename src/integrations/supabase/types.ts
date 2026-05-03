@@ -14,7 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      sessions: {
+        Row: {
+          created_at: string
+          customer_name: string
+          customer_square_id: string | null
+          end_at: string | null
+          id: string
+          start_at: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          customer_square_id?: string | null
+          end_at?: string | null
+          id?: string
+          start_at: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          customer_square_id?: string | null
+          end_at?: string | null
+          id?: string
+          start_at?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workers: {
+        Row: {
+          archived: boolean
+          color: string
+          created_at: string
+          hourly_rate: number | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          color: string
+          created_at?: string
+          hourly_rate?: number | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          color?: string
+          created_at?: string
+          hourly_rate?: number | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -256,17 +256,17 @@ export default function WeeklyReportPage() {
                     <div className="space-y-2">
                       {breakdown.map((b) => (
                         <div
-                          key={b.customer?.id ?? "unknown"}
+                          key={b.customer?.id ?? b.name}
                           className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border"
                         >
                           <AvatarTile
-                            name={b.customer?.name ?? "—"}
+                            name={b.customer?.name ?? b.name}
                             color={b.customer?.color ?? "0 0% 50%"}
                             size="sm"
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">
-                              {b.customer?.name ?? "Unknown"}
+                              {b.customer?.name ?? b.name}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {b.count} {b.count === 1 ? "session" : "sessions"}
@@ -289,7 +289,6 @@ export default function WeeklyReportPage() {
                         .slice()
                         .sort((a, b) => a.startAt - b.startAt)
                         .map((s, i) => {
-                          const c = customers.find((x) => x.id === s.customerId);
                           return (
                             <div
                               key={s.id}
@@ -304,7 +303,7 @@ export default function WeeklyReportPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">
-                                  {c?.name ?? "Unknown"}
+                                  {s.customerName}
                                 </p>
                                 <p className="text-xs text-muted-foreground tabular-nums">
                                   {fmtTime(s.startAt)} —{" "}

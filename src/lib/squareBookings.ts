@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 export interface SquareBooking {
   id: string;
@@ -12,12 +11,17 @@ export async function fetchTodayBookings(): Promise<SquareBooking[]> {
   const now = new Date();
   const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const tzOffsetMin = now.getTimezoneOffset();
-  const { data, error } = await supabase.functions.invoke(
-    `square-bookings?date=${date}&tzOffsetMin=${tzOffsetMin}`,
-    { method: "GET" },
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  const anon = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const res = await fetch(
+    `${base}/functions/v1/square-bookings?date=${date}&tzOffsetMin=${tzOffsetMin}`,
+    {
+      headers: { Authorization: `Bearer ${anon}`, apikey: anon },
+    },
   );
-  if (error) throw error;
-  const bookings = (data as any)?.bookings;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error ?? "Bookings fetch failed");
+  const bookings = data?.bookings;
   if (!Array.isArray(bookings)) throw new Error("Unexpected response");
   return bookings as SquareBooking[];
 }

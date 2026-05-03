@@ -121,6 +121,14 @@ export default function WorkerDetailPage() {
                   {formatDuration(weekMs)}
                 </p>
               </div>
+              {typeof worker.hourlyRate === "number" && worker.hourlyRate > 0 && (
+                <div>
+                  <p className="text-muted-foreground">Earned this week</p>
+                  <p className="font-medium tabular-nums text-base">
+                    ${((weekMs / 3_600_000) * worker.hourlyRate).toFixed(2)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

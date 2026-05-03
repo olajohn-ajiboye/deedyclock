@@ -1,8 +1,13 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Clock3, Users, UserRound, BarChart3 } from "lucide-react";
-import { useStore, useNow } from "@/lib/store";
+import { useEffect, useState } from "react";
+import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
+import { Clock3, Users, UserRound, BarChart3, LogOut } from "lucide-react";
+import { useStore, useNow, loadFromCloud, clearCloudCache } from "@/lib/store";
 import { formatDuration } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { useAuth, signOut } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { syncCustomersFromSquare } from "@/lib/squareSync";
+import { toast } from "sonner";
 
 const tabs = [
   { to: "/", label: "Clock In", icon: Clock3, end: true },
@@ -12,8 +17,26 @@ const tabs = [
 ];
 
 export default function AppLayout() {
+  const { user, loading: authLoading } = useAuth();
   const sessions = useStore((s) => s.sessions);
   const workers = useStore((s) => s.workers);
+  const dataLoaded = useStore((s) => s.loaded);
+  const [bootstrapping, setBootstrapping] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      clearCloudCache();
+      return;
+    }
+    setBootstrapping(true);
+    Promise.all([
+      loadFromCloud().catch((e) => {
+        toast.error(e instanceof Error ? e.message : "Failed to load data");
+      }),
+      syncCustomersFromSquare({ silent: true }).catch(() => {}),
+    ]).finally(() => setBootstrapping(false));
+  }, [user]);
+
   const active = sessions
     .filter((x) => x.endAt === null)
     .map((x) => ({
@@ -23,6 +46,9 @@ export default function AppLayout() {
     }));
   const now = useNow();
   const location = useLocation();
+
+  if (authLoading) return null;
+  if (!user) return <Navigate to="/auth" replace />;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -64,6 +90,17 @@ export default function AppLayout() {
               );
             })}
           </nav>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-xl h-11 w-11"
+            onClick={() => signOut()}
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
         </div>
 
         {active.length > 0 && (
@@ -92,7 +129,11 @@ export default function AppLayout() {
       </header>
 
       <main className="flex-1 max-w-[1400px] w-full mx-auto px-5 sm:px-8 py-6 sm:py-10">
-        <Outlet />
+        {bootstrapping && !dataLoaded ? (
+          <div className="text-center text-muted-foreground py-20">Loading…</div>
+        ) : (
+          <Outlet />
+        )}
       </main>
     </div>
   );

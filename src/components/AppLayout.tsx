@@ -14,13 +14,12 @@ const tabs = [
 export default function AppLayout() {
   const sessions = useStore((s) => s.sessions);
   const workers = useStore((s) => s.workers);
-  const customers = useStore((s) => s.customers);
   const active = sessions
     .filter((x) => x.endAt === null)
     .map((x) => ({
       session: x,
       worker: workers.find((w) => w.id === x.workerId),
-      customer: customers.find((c) => c.id === x.customerId),
+      customerName: x.customerName,
     }));
   const now = useNow();
   const location = useLocation();
@@ -70,7 +69,7 @@ export default function AppLayout() {
         {active.length > 0 && (
           <div className="border-t border-border/60 bg-success/5">
             <div className="max-w-[1400px] mx-auto px-5 sm:px-8 py-2 flex gap-3 overflow-x-auto">
-              {active.map(({ session, worker, customer }) => (
+              {active.map(({ session, worker, customerName }) => (
                 <div
                   key={session.id}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border border-border text-sm whitespace-nowrap"
@@ -80,7 +79,7 @@ export default function AppLayout() {
                   </span>
                   <span className="font-medium">{worker?.name ?? "—"}</span>
                   <span className="text-muted-foreground">·</span>
-                  <span className="text-muted-foreground">{customer?.name ?? "—"}</span>
+                  <span className="text-muted-foreground">{customerName ?? "—"}</span>
                   <span className="text-muted-foreground">·</span>
                   <span className="tabular-nums font-medium text-success">
                     {formatDuration(now - session.startAt, { withSeconds: true })}

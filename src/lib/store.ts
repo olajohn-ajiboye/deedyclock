@@ -139,7 +139,7 @@ export const store = {
     if (patch.color !== undefined) dbPatch.color = patch.color;
     if (patch.hourlyRate !== undefined) dbPatch.hourly_rate = patch.hourlyRate ?? null;
     if (patch.archived !== undefined) dbPatch.archived = patch.archived;
-    const { error } = await supabase.from("workers").update(dbPatch).eq("id", id);
+    const { error } = await supabase.from("workers").update(dbPatch as never).eq("id", id);
     if (error) throw error;
     setState((s) => ({
       ...s,
@@ -204,7 +204,7 @@ export const store = {
       dbPatch.end_at = patch.endAt === null ? null : new Date(patch.endAt).toISOString();
     if (patch.customerSquareId !== undefined) dbPatch.customer_square_id = patch.customerSquareId;
     if (patch.customerName !== undefined) dbPatch.customer_name = patch.customerName;
-    const { error } = await supabase.from("sessions").update(dbPatch).eq("id", id);
+    const { error } = await supabase.from("sessions").update(dbPatch as never).eq("id", id);
     if (error) throw error;
     setState((s) => ({
       ...s,

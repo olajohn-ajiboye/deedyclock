@@ -175,24 +175,55 @@ export default function WorkerDetailPage() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {filteredCustomers.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => handleStart(c.id)}
-                className="group flex items-center gap-3 p-4 rounded-2xl bg-background border border-border hover:border-primary hover:shadow-[var(--shadow-card)] transition-all text-left min-h-[80px]"
-              >
-                <AvatarTile name={c.name} color={c.color} size="md" />
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">Tap to start</p>
-                </div>
-              </button>
-            ))}
-            {filteredCustomers.length === 0 && (
-              <div className="col-span-full text-center text-muted-foreground py-10">
+          <div className="rounded-2xl border border-border bg-background overflow-hidden max-h-[480px] overflow-y-auto">
+            {filteredCustomers.length === 0 ? (
+              <div className="text-center text-muted-foreground py-10">
                 No clients match. <Link to="/customers" className="underline">Add one</Link>.
               </div>
+            ) : (
+              <table className="w-full">
+                <thead className="sticky top-0 bg-muted/60 backdrop-blur">
+                  <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="px-4 py-3 font-medium">Client</th>
+                    <th className="px-4 py-3 font-medium hidden sm:table-cell">Phone</th>
+                    <th className="px-4 py-3 font-medium text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCustomers.map((c, i) => (
+                    <tr
+                      key={c.id}
+                      onClick={() => handleStart(c.id)}
+                      className={cn(
+                        "cursor-pointer hover:bg-muted/40 transition-colors",
+                        i > 0 && "border-t border-border",
+                      )}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <AvatarTile name={c.name} color={c.color} size="md" />
+                          <span className="font-medium">{c.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">
+                        {c.phone ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStart(c.id);
+                          }}
+                          className="h-11 rounded-xl"
+                        >
+                          Start
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </section>

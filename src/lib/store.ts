@@ -1,112 +1,118 @@
 import { useSyncExternalStore } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { Customer, DBState, Session, Worker } from "./types";
-
-const STORAGE_KEY = "salon-hours.v1";
 
 /** deedylocs.ca theme-color #4e846c */
 export const DEEDYLOCS_SITE_GREEN = "152 26% 41%";
 
 const PALETTE = [
-  "275 42% 48%", // purple (OreOluwa default lane)
+  "275 42% 48%",
   DEEDYLOCS_SITE_GREEN,
-  "38 52% 54%", // honey accent
-  "8 58% 52%", // terracotta
-  "210 40% 48%", // dusty blue
-  "280 35% 52%", // violet
-  "32 45% 48%", // copper
-  "165 28% 42%", // deep teal
+  "38 52% 54%",
+  "8 58% 52%",
+  "210 40% 48%",
+  "280 35% 52%",
+  "32 45% 48%",
+  "165 28% 42%",
 ];
 
 export function pickColor(seedIndex: number) {
   return PALETTE[seedIndex % PALETTE.length];
 }
 
-const seed = (): DBState => {
-  const now = Date.now();
-  const workers: Worker[] = [
-    { id: "w1", name: "OreOluwa", color: "275 45% 46%" },
-    { id: "w2", name: "Dami", color: DEEDYLOCS_SITE_GREEN },
-  ];
-  const customers: Customer[] = [
-    { id: "c1", name: "Eleanor Park", color: PALETTE[4] },
-    { id: "c2", name: "Maria Gomez", color: PALETTE[5] },
-    { id: "c3", name: "Hiro Tanaka", color: PALETTE[6] },
-    { id: "c4", name: "Priya Shah", color: PALETTE[7] },
-    { id: "c5", name: "Walk-in", color: PALETTE[2] },
-  ];
-  const sessions: Session[] = [
-    {
-      id: "s1",
-      workerId: "w1",
-      customerId: "c1",
-      startAt: now - 1000 * 60 * 60 * 26,
-      endAt: now - 1000 * 60 * 60 * 24,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: "s2",
-      workerId: "w2",
-      customerId: "c2",
-      startAt: now - 1000 * 60 * 60 * 5,
-      endAt: now - 1000 * 60 * 60 * 3.5,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-  return { workers, customers, sessions };
+let state: DBState = {
+  workers: [],
+  customers: [],
+  sessions: [],
+  loaded: false,
 };
 
-function normalizeDeedySlotGreen(workers: Worker[]): Worker[] {
-  return workers.map((w) => {
-    const namedDeedy = w.name.trim().toLowerCase() === "deedy";
-    const seededSecondSlot = w.id === "w2";
-    if (!namedDeedy && !seededSecondSlot) return w;
-    if (w.color === DEEDYLOCS_SITE_GREEN) return w;
-    return { ...w, color: DEEDYLOCS_SITE_GREEN };
-  });
-}
-
-let state: DBState = load();
 const listeners = new Set<() => void>();
 
-function load(): DBState {
-  if (typeof window === "undefined") return seed();
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const s = seed();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-      return s;
-    }
-    const parsed = JSON.parse(raw) as DBState;
-    const prevWorkers = parsed.workers ?? [];
-    const workers = normalizeDeedySlotGreen(prevWorkers);
-    const changed = workers.some((w, i) => w !== prevWorkers[i]);
-    if (changed) {
-      const next = { ...parsed, workers };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    }
-    return parsed;
-  } catch {
-    return seed();
-  }
-}
-
-function persist() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignore quota
-  }
+function emit() {
   listeners.forEach((l) => l());
 }
 
 function setState(updater: (s: DBState) => DBState) {
   state = updater(state);
-  persist();
+  emit();
 }
+
+// ---------- mappers ----------
+
+type WorkerRow = {
+  id: string;
+  name: string;
+  color: string;
+  hourly_rate: number | string | null;
+  archived: boolean;
+};
+type SessionRow = {
+  id: string;
+  worker_id: string;
+  customer_square_id: string | null;
+  customer_name: string;
+  start_at: string;
+  end_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function rowToWorker(r: WorkerRow): Worker {
+  return {
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    hourlyRate: r.hourly_rate == null ? undefined : Number(r.hourly_rate),
+    archived: r.archived,
+  };
+}
+function rowToSession(r: SessionRow): Session {
+  return {
+    id: r.id,
+    workerId: r.worker_id,
+    customerSquareId: r.customer_square_id,
+    customerName: r.customer_name,
+    startAt: new Date(r.start_at).getTime(),
+    endAt: r.end_at ? new Date(r.end_at).getTime() : null,
+    createdAt: new Date(r.created_at).getTime(),
+    updatedAt: new Date(r.updated_at).getTime(),
+  };
+}
+
+// ---------- loading ----------
+
+let loadPromise: Promise<void> | null = null;
+
+export async function loadFromCloud(): Promise<void> {
+  if (loadPromise) return loadPromise;
+  loadPromise = (async () => {
+    const [workersRes, sessionsRes] = await Promise.all([
+      supabase.from("workers").select("*").order("created_at", { ascending: true }),
+      supabase.from("sessions").select("*").order("start_at", { ascending: false }),
+    ]);
+    if (workersRes.error) throw workersRes.error;
+    if (sessionsRes.error) throw sessionsRes.error;
+    setState((s) => ({
+      ...s,
+      workers: (workersRes.data as WorkerRow[]).map(rowToWorker),
+      sessions: (sessionsRes.data as SessionRow[]).map(rowToSession),
+      loaded: true,
+    }));
+  })();
+  try {
+    await loadPromise;
+  } finally {
+    loadPromise = null;
+  }
+}
+
+export function clearCloudCache() {
+  state = { workers: [], customers: [], sessions: [], loaded: false };
+  emit();
+}
+
+// ---------- store API ----------
 
 export const store = {
   getState: () => state,
@@ -116,167 +122,117 @@ export const store = {
   },
 
   // Workers
-  addWorker(name: string, hourlyRate?: number) {
-    setState((s) => ({
-      ...s,
-      workers: [
-        ...s.workers,
-        {
-          id: crypto.randomUUID(),
-          name: name.trim(),
-          color: pickColor(s.workers.length),
-          hourlyRate,
-        },
-      ],
-    }));
+  async addWorker(name: string, hourlyRate?: number) {
+    const color = pickColor(state.workers.length);
+    const { data, error } = await supabase
+      .from("workers")
+      .insert({ name: name.trim(), color, hourly_rate: hourlyRate ?? null })
+      .select()
+      .single();
+    if (error) throw error;
+    const w = rowToWorker(data as WorkerRow);
+    setState((s) => ({ ...s, workers: [...s.workers, w] }));
   },
-  updateWorker(id: string, patch: Partial<Worker>) {
+  async updateWorker(id: string, patch: Partial<Worker>) {
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.name !== undefined) dbPatch.name = patch.name;
+    if (patch.color !== undefined) dbPatch.color = patch.color;
+    if (patch.hourlyRate !== undefined) dbPatch.hourly_rate = patch.hourlyRate ?? null;
+    if (patch.archived !== undefined) dbPatch.archived = patch.archived;
+    const { error } = await supabase.from("workers").update(dbPatch).eq("id", id);
+    if (error) throw error;
     setState((s) => ({
       ...s,
       workers: s.workers.map((w) => (w.id === id ? { ...w, ...patch } : w)),
     }));
   },
-  deleteWorker(id: string) {
-    setState((s) => ({
-      ...s,
-      workers: s.workers.map((w) => (w.id === id ? { ...w, archived: true } : w)),
-    }));
+  async deleteWorker(id: string) {
+    await store.updateWorker(id, { archived: true });
   },
 
-  // Customers
-  addCustomer(name: string, phone?: string, note?: string) {
-    setState((s) => ({
-      ...s,
-      customers: [
-        ...s.customers,
-        {
-          id: crypto.randomUUID(),
-          name: name.trim(),
-          phone,
-          note,
-          color: pickColor(s.customers.length + 3),
-        },
-      ],
-    }));
-  },
-  updateCustomer(id: string, patch: Partial<Customer>) {
-    setState((s) => ({
-      ...s,
-      customers: s.customers.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-    }));
-  },
-  deleteCustomer(id: string) {
-    setState((s) => ({
-      ...s,
-      customers: s.customers.map((c) => (c.id === id ? { ...c, archived: true } : c)),
-    }));
-  },
-
-  // Sessions
-  startSession(workerId: string, customerId: string) {
-    const now = Date.now();
-    setState((s) => ({
-      ...s,
-      sessions: [
-        ...s.sessions,
-        {
-          id: crypto.randomUUID(),
-          workerId,
-          customerId,
-          startAt: now,
-          endAt: null,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ],
-    }));
-  },
-  endSession(id: string) {
-    const now = Date.now();
-    setState((s) => ({
-      ...s,
-      sessions: s.sessions.map((x) => (x.id === id ? { ...x, endAt: now, updatedAt: now } : x)),
-    }));
-  },
-  updateSession(id: string, patch: Partial<Session>) {
-    setState((s) => ({
-      ...s,
-      sessions: s.sessions.map((x) => (x.id === id ? { ...x, ...patch, updatedAt: Date.now() } : x)),
-    }));
-  },
-  deleteSession(id: string) {
-    setState((s) => ({
-      ...s,
-      sessions: s.sessions.filter((x) => x.id !== id),
-    }));
-  },
-
-  // Replace entire customer list (used by Square sync). Archives any local
-  // customers without a squareId match, and merges existing entries by squareId
-  // to preserve their stable color and id.
+  // Customers (in-memory only, populated by Square sync)
   replaceCustomersFromSquare(
     incoming: Array<{ squareId: string; name: string; phone?: string; note?: string; email?: string }>,
   ) {
     setState((s) => {
-      const bySquareId = new Map(
-        s.customers.filter((c) => c.squareId).map((c) => [c.squareId!, c]),
-      );
-      const next: Customer[] = incoming.map((sq, i) => {
-        const existing = bySquareId.get(sq.squareId);
-        if (existing) {
-          return {
-            ...existing,
-            name: sq.name,
-            phone: sq.phone,
-            note: sq.note,
-            email: sq.email,
-            archived: false,
-          };
-        }
-        return {
-          id: crypto.randomUUID(),
-          name: sq.name,
-          phone: sq.phone,
-          note: sq.note,
-          email: sq.email,
-          color: pickColor(i + 3),
-          squareId: sq.squareId,
-        };
-      });
-      // Keep local-only customers (no squareId) referenced by sessions, archived.
-      const referencedIds = new Set(s.sessions.map((x) => x.customerId));
-      const localKept = s.customers
-        .filter((c) => !c.squareId && referencedIds.has(c.id))
-        .map((c) => ({ ...c, archived: true }));
-      return { ...s, customers: [...next, ...localKept] };
+      const next: Customer[] = incoming.map((sq, i) => ({
+        id: sq.squareId, // use squareId as local id
+        name: sq.name,
+        phone: sq.phone,
+        note: sq.note,
+        email: sq.email,
+        color: pickColor(i + 3),
+        squareId: sq.squareId,
+      }));
+      return { ...s, customers: next };
     });
   },
 
-  resetAll() {
-    state = seed();
-    persist();
+  // Sessions
+  async startSession(workerId: string, customer: { squareId: string | null; name: string }) {
+    const startAt = new Date();
+    const { data, error } = await supabase
+      .from("sessions")
+      .insert({
+        worker_id: workerId,
+        customer_square_id: customer.squareId,
+        customer_name: customer.name,
+        start_at: startAt.toISOString(),
+        end_at: null,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    setState((s) => ({ ...s, sessions: [rowToSession(data as SessionRow), ...s.sessions] }));
+  },
+  async endSession(id: string) {
+    const endAt = new Date();
+    const { error } = await supabase
+      .from("sessions")
+      .update({ end_at: endAt.toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    setState((s) => ({
+      ...s,
+      sessions: s.sessions.map((x) => (x.id === id ? { ...x, endAt: endAt.getTime() } : x)),
+    }));
+  },
+  async updateSession(id: string, patch: Partial<Session>) {
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.startAt !== undefined) dbPatch.start_at = new Date(patch.startAt).toISOString();
+    if (patch.endAt !== undefined)
+      dbPatch.end_at = patch.endAt === null ? null : new Date(patch.endAt).toISOString();
+    if (patch.customerSquareId !== undefined) dbPatch.customer_square_id = patch.customerSquareId;
+    if (patch.customerName !== undefined) dbPatch.customer_name = patch.customerName;
+    const { error } = await supabase.from("sessions").update(dbPatch).eq("id", id);
+    if (error) throw error;
+    setState((s) => ({
+      ...s,
+      sessions: s.sessions.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+    }));
+  },
+  async deleteSession(id: string) {
+    const { error } = await supabase.from("sessions").delete().eq("id", id);
+    if (error) throw error;
+    setState((s) => ({ ...s, sessions: s.sessions.filter((x) => x.id !== id) }));
   },
 };
 
 export function useStore<T>(selector: (s: DBState) => T): T {
   return useSyncExternalStore(
     store.subscribe,
-    () => selector(store.getState()),
-    () => selector(store.getState()),
+    () => selector(state),
+    () => selector(state),
   );
 }
 
 // Live ticking timer (1s) for active session displays
 const tickListeners = new Set<() => void>();
 let tickInterval: ReturnType<typeof setInterval> | null = null;
-
 function ensureTick() {
   if (tickInterval) return;
-  tickInterval = setInterval(() => {
-    tickListeners.forEach((l) => l());
-  }, 1000);
+  tickInterval = setInterval(() => tickListeners.forEach((l) => l()), 1000);
 }
-
 export function useNow(): number {
   return useSyncExternalStore(
     (cb) => {

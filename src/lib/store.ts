@@ -5,12 +5,12 @@ const STORAGE_KEY = "salon-hours.v1";
 
 const PALETTE = [
   "326 38% 45%", // plum
-  "36 70% 55%",  // gold
+  "36 70% 55%", // gold
   "152 35% 40%", // sage
-  "8 65% 55%",   // terracotta
+  "8 65% 55%", // terracotta
   "210 45% 45%", // dusty blue
   "280 30% 50%", // violet
-  "20 55% 50%",  // copper
+  "20 55% 50%", // copper
   "180 30% 40%", // teal
 ];
 
@@ -21,10 +21,8 @@ export function pickColor(seedIndex: number) {
 const seed = (): DBState => {
   const now = Date.now();
   const workers: Worker[] = [
-    { id: "w1", name: "Ava Mendes", color: PALETTE[0] },
-    { id: "w2", name: "Sofia Lin", color: PALETTE[1] },
-    { id: "w3", name: "Jordan Reyes", color: PALETTE[2] },
-    { id: "w4", name: "Maya Khan", color: PALETTE[3] },
+    { id: "w1", name: "OreOluwa", color: PALETTE[0] },
+    { id: "w2", name: "Deedy", color: PALETTE[1] },
   ];
   const customers: Customer[] = [
     { id: "c1", name: "Eleanor Park", color: PALETTE[4] },
@@ -119,9 +117,7 @@ export const store = {
   deleteWorker(id: string) {
     setState((s) => ({
       ...s,
-      workers: s.workers.map((w) =>
-        w.id === id ? { ...w, archived: true } : w,
-      ),
+      workers: s.workers.map((w) => (w.id === id ? { ...w, archived: true } : w)),
     }));
   },
 
@@ -144,17 +140,13 @@ export const store = {
   updateCustomer(id: string, patch: Partial<Customer>) {
     setState((s) => ({
       ...s,
-      customers: s.customers.map((c) =>
-        c.id === id ? { ...c, ...patch } : c,
-      ),
+      customers: s.customers.map((c) => (c.id === id ? { ...c, ...patch } : c)),
     }));
   },
   deleteCustomer(id: string) {
     setState((s) => ({
       ...s,
-      customers: s.customers.map((c) =>
-        c.id === id ? { ...c, archived: true } : c,
-      ),
+      customers: s.customers.map((c) => (c.id === id ? { ...c, archived: true } : c)),
     }));
   },
 
@@ -181,17 +173,13 @@ export const store = {
     const now = Date.now();
     setState((s) => ({
       ...s,
-      sessions: s.sessions.map((x) =>
-        x.id === id ? { ...x, endAt: now, updatedAt: now } : x,
-      ),
+      sessions: s.sessions.map((x) => (x.id === id ? { ...x, endAt: now, updatedAt: now } : x)),
     }));
   },
   updateSession(id: string, patch: Partial<Session>) {
     setState((s) => ({
       ...s,
-      sessions: s.sessions.map((x) =>
-        x.id === id ? { ...x, ...patch, updatedAt: Date.now() } : x,
-      ),
+      sessions: s.sessions.map((x) => (x.id === id ? { ...x, ...patch, updatedAt: Date.now() } : x)),
     }));
   },
   deleteSession(id: string) {

@@ -36,17 +36,21 @@ export default function WeeklyReportPage() {
   const topCustomer = (() => {
     const map = new Map<string, number>();
     weekSessions.forEach((s) => {
-      map.set(s.customerId, (map.get(s.customerId) ?? 0) + durationMs(s, now));
+      const key = s.customerSquareId ?? `name:${s.customerName}`;
+      map.set(key, (map.get(key) ?? 0) + durationMs(s, now));
     });
-    let topId: string | null = null;
+    let topKey: string | null = null;
     let topMs = 0;
     map.forEach((v, k) => {
       if (v > topMs) {
         topMs = v;
-        topId = k;
+        topKey = k;
       }
     });
-    return topId ? customers.find((c) => c.id === topId) : null;
+    if (!topKey) return null;
+    if (topKey.startsWith("name:")) return { name: topKey.slice(5) };
+    const c = customers.find((x) => x.squareId === topKey);
+    return c ?? { name: weekSessions.find((s) => s.customerSquareId === topKey)?.customerName ?? "—" };
   })();
 
   function handleExport() {

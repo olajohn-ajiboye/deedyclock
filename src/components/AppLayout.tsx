@@ -34,24 +34,19 @@ export default function AppLayout() {
               className="w-10 h-10 rounded-2xl grid place-items-center text-primary-foreground font-display font-semibold text-lg"
               style={{ background: "var(--gradient-primary)" }}
             >
-              S
+              DD
             </div>
             <div className="leading-tight">
-              <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">
-                Salon Hours
-              </h1>
+              <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">Deedy Clock</h1>
               <p className="text-xs text-muted-foreground -mt-0.5">
-                {active.length === 0
-                  ? "Quiet floor — no one on the clock"
-                  : `${active.length} on the clock`}
+                {active.length === 0 ? "Quiet floor — no one on the clock" : `${active.length} on the clock`}
               </p>
             </div>
           </div>
 
           <nav className="ml-auto flex items-center gap-1 bg-muted/60 p-1 rounded-2xl">
             {tabs.map(({ to, label, icon: Icon, end }) => {
-              const isActive =
-                end ? location.pathname === to : location.pathname.startsWith(to);
+              const isActive = end ? location.pathname === to : location.pathname.startsWith(to);
               return (
                 <NavLink
                   key={to}

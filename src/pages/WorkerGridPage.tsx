@@ -1,16 +1,72 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useStore, useNow } from "@/lib/store";
+import { useStore, useLiveClock } from "@/lib/store";
 import { AvatarTile } from "@/components/AvatarTile";
 import { durationMs, formatDuration } from "@/lib/time";
 import { ArrowRight, Sparkles } from "lucide-react";
+import type { Session, Worker } from "@/lib/types";
+
+/** `liveNow` is only passed while this worker has an active session, so idle tiles do not tick. */
+const WorkerClockCard = memo(function WorkerClockCard({
+  worker,
+  sessions,
+  todayStart,
+  liveNow,
+}: {
+  worker: Worker;
+  sessions: Session[];
+  todayStart: number;
+  liveNow?: number;
+}) {
+  const active = sessions.find((s) => s.workerId === worker.id && s.endAt === null) ?? null;
+  const activeCustomerName = active?.customerName ?? null;
+  const clock = liveNow ?? 0;
+  const todayMs = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.workerId === worker.id && s.startAt >= todayStart)
+        .reduce((acc, s) => acc + durationMs(s, clock), 0),
+    [sessions, worker.id, todayStart, clock],
+  );
+
+  return (
+    <Link
+      to={`/worker/${worker.id}`}
+      className="group relative overflow-hidden rounded-3xl bg-card border border-border p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-shadow min-h-[200px] flex flex-col"
+    >
+      {active && (
+        <span className="absolute top-4 right-4 inline-flex items-center gap-1.5 text-xs font-medium text-success">
+          <span className="relative inline-flex items-center justify-center w-2 h-2">
+            <span className="absolute inset-0 rounded-full bg-success animate-soft-pulse" />
+          </span>
+          On the clock
+        </span>
+      )}
+      <AvatarTile name={worker.name} color={worker.color} size="xl" />
+      <h3 className="font-display text-xl font-semibold mt-4">{worker.name}</h3>
+
+      <div className="mt-auto pt-4 flex items-end justify-between">
+        <div className="text-sm">
+          <p className="text-muted-foreground">Today</p>
+          <p className="font-medium tabular-nums">{formatDuration(todayMs)}</p>
+          {active && activeCustomerName && (
+            <p className="text-xs text-success mt-1">with {activeCustomerName}</p>
+          )}
+        </div>
+        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+      </div>
+    </Link>
+  );
+});
 
 export default function WorkerGridPage() {
   const allWorkers = useStore((s) => s.workers);
   const sessions = useStore((s) => s.sessions);
   const workers = allWorkers.filter((w) => !w.archived);
   const customers = useStore((s) => s.customers);
-  const now = useNow();
+
+  const anyActiveOnFloor = useMemo(() => sessions.some((s) => s.endAt === null), [sessions]);
+  const liveNow = useLiveClock(anyActiveOnFloor);
 
   const todayStart = useMemo(() => {
     const d = new Date();
@@ -42,46 +98,15 @@ export default function WorkerGridPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {workers.map((w) => {
-          const active = sessions.find(
-            (s) => s.workerId === w.id && s.endAt === null,
-          );
-          const activeCustomerName = active?.customerName ?? null;
-          const todayMs = sessions
-            .filter((s) => s.workerId === w.id && s.startAt >= todayStart)
-            .reduce((acc, s) => acc + durationMs(s, now), 0);
-
+          const onClock = sessions.some((s) => s.workerId === w.id && s.endAt === null);
           return (
-            <Link
+            <WorkerClockCard
               key={w.id}
-              to={`/worker/${w.id}`}
-              className="group relative overflow-hidden rounded-3xl bg-card border border-border p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-shadow min-h-[200px] flex flex-col"
-            >
-              {active && (
-                <span className="absolute top-4 right-4 inline-flex items-center gap-1.5 text-xs font-medium text-success">
-                  <span className="relative inline-flex items-center justify-center w-2 h-2">
-                    <span className="absolute inset-0 rounded-full bg-success animate-soft-pulse" />
-                  </span>
-                  On the clock
-                </span>
-              )}
-              <AvatarTile name={w.name} color={w.color} size="xl" />
-              <h3 className="font-display text-xl font-semibold mt-4">{w.name}</h3>
-
-              <div className="mt-auto pt-4 flex items-end justify-between">
-                <div className="text-sm">
-                  <p className="text-muted-foreground">Today</p>
-                  <p className="font-medium tabular-nums">
-                    {formatDuration(todayMs)}
-                  </p>
-                  {active && activeCustomerName && (
-                    <p className="text-xs text-success mt-1">
-                      with {activeCustomerName}
-                    </p>
-                  )}
-                </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
+              worker={w}
+              sessions={sessions}
+              todayStart={todayStart}
+              liveNow={onClock ? liveNow : undefined}
+            />
           );
         })}
 

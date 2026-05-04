@@ -130,7 +130,8 @@ function WorkerDialog({
             {initial ? "Edit loctician" : "Add loctician"}
           </DialogTitle>
           <DialogDescription>
-            Locticians appear on the home grid for quick clock-in.
+            Locticians appear on the home grid for quick clock-in. Adding a name here does not create a
+            sign-in account—admins still add users under Supabase Authentication.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

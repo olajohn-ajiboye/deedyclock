@@ -1,10 +1,4 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-const SQUARE_BASE = "https://connect.squareup.com/v2";
+import { corsHeaders, SQUARE_BASE } from "../_shared/square.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

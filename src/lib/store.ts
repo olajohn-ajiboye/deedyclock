@@ -1,8 +1,8 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Customer, DBState, Session, Worker } from "./types";
 
-/** deedylocs.ca theme-color #4e846c */
+/** deedylocs.ca theme-color  */
 export const DEEDYLOCS_SITE_GREEN = "152 26% 41%";
 
 const PALETTE = [
@@ -249,4 +249,16 @@ export function useNow(): number {
     () => Math.floor(Date.now() / 1000) * 1000,
     () => Date.now(),
   );
+}
+
+/** Like `useNow` but only runs a 1s interval while `enabled` — avoids global ticking when idle. */
+export function useLiveClock(enabled: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!enabled) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [enabled]);
+  return now;
 }

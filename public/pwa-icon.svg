@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Deedy Clock">
+  <rect width="512" height="512" rx="112" fill="#4e846c"/>
+  <text
+    x="256"
+    y="318"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="200"
+    font-weight="700"
+    fill="#ffffff"
+  >DC</text>
+</svg>

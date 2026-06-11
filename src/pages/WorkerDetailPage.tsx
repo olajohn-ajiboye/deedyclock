@@ -68,9 +68,9 @@ export default function WorkerDetailPage() {
   const todaysCustomers = customers.filter(
     (c) => c.squareId && todaySquareIds.has(c.squareId),
   );
-  const filteredCustomers = todaysCustomers.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredCustomers = search
+    ? customers.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+    : todaysCustomers;
 
   function handleStart(customer: { id: string; squareId?: string; name: string }) {
     if (active) {
@@ -192,7 +192,7 @@ export default function WorkerDetailPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search today's clients"
+                placeholder="Search all clients"
                 className="pl-9 h-12 rounded-xl"
               />
             </div>
@@ -204,9 +204,9 @@ export default function WorkerDetailPage() {
                   ? "Loading appointments…"
                   : bookingsError
                     ? "Couldn't load today's appointments from Square."
-                    : todaysCustomers.length === 0
-                      ? "No appointments scheduled for today."
-                      : "No clients match your search."}
+                    : search
+                      ? "No clients match your search."
+                      : "No appointments scheduled for today."}
               </div>
             ) : (
               <table className="w-full">

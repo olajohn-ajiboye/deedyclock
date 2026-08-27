@@ -17,6 +17,7 @@ export interface Customer {
   archived?: boolean;
   squareId?: string;
   email?: string;
+  squareVersion?: number;
 }
 
 export interface Session {

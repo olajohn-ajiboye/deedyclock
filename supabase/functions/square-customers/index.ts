@@ -1,4 +1,9 @@
 import { corsHeaders, SQUARE_BASE } from "../_shared/square.ts";
+import {
+  isUpdateCustomerNoteRequest,
+  mapSquareCustomer,
+  parseUpdateCustomerNoteRequest,
+} from "../_shared/squareCustomers.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -13,10 +18,39 @@ Deno.serve(async (req) => {
     );
   }
 
+  const squareHeaders = {
+    Authorization: `Bearer ${token}`,
+    "Square-Version": "2024-10-17",
+    "Content-Type": "application/json",
+  };
+
   try {
+    const body = await req.json().catch(() => ({}));
+    if (isUpdateCustomerNoteRequest(body)) {
+      const update = parseUpdateCustomerNoteRequest(body);
+      const res = await fetch(`${SQUARE_BASE}/customers/${encodeURIComponent(update.squareId)}`, {
+        method: "PUT",
+        headers: squareHeaders,
+        body: JSON.stringify({
+          note: update.note,
+          version: update.version,
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        return new Response(
+          JSON.stringify({ error: "Square API error", status: res.status, body: payload }),
+          { status: res.status === 409 ? 409 : 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ customer: mapSquareCustomer(payload.customer) }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const customers: Array<Record<string, unknown>> = [];
     let cursor: string | undefined;
-    // Paginate through all customers (cap at 10 pages / ~1000 records as safety)
     for (let i = 0; i < 10; i++) {
       const url = new URL(`${SQUARE_BASE}/customers`);
       url.searchParams.set("limit", "100");
@@ -24,42 +58,20 @@ Deno.serve(async (req) => {
       url.searchParams.set("sort_field", "DEFAULT");
       url.searchParams.set("sort_order", "ASC");
 
-      const res = await fetch(url.toString(), {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Square-Version": "2024-10-17",
-          "Content-Type": "application/json",
-        },
-      });
-      const body = await res.json();
+      const res = await fetch(url.toString(), { headers: squareHeaders });
+      const listBody = await res.json();
       if (!res.ok) {
         return new Response(
-          JSON.stringify({ error: "Square API error", status: res.status, body }),
+          JSON.stringify({ error: "Square API error", status: res.status, body: listBody }),
           { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      if (Array.isArray(body.customers)) customers.push(...body.customers);
-      cursor = body.cursor;
+      if (Array.isArray(listBody.customers)) customers.push(...listBody.customers);
+      cursor = listBody.cursor;
       if (!cursor) break;
     }
 
-    const mapped = customers.map((c: any) => {
-      const name =
-        [c.given_name, c.family_name].filter(Boolean).join(" ").trim() ||
-        c.company_name ||
-        c.nickname ||
-        c.email_address ||
-        c.phone_number ||
-        "Unnamed client";
-      return {
-        squareId: c.id as string,
-        name,
-        phone: c.phone_number ?? undefined,
-        note: c.note ?? undefined,
-        email: c.email_address ?? undefined,
-      };
-    });
-
+    const mapped = customers.map((customer) => mapSquareCustomer(customer));
     return new Response(JSON.stringify({ customers: mapped }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

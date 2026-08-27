@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Pencil, Square, Search } from "lucide-react";
+import { ArrowLeft, Square } from "lucide-react";
 import { useStore, useNow, store } from "@/lib/store";
 import { AvatarTile } from "@/components/AvatarTile";
 import { EditSessionDrawer } from "@/components/EditSessionDrawer";
+import { TodaysClients } from "@/components/TodaysClients";
+import { TodaysSessions } from "@/components/TodaysSessions";
 import {
   durationMs,
   formatDuration,
@@ -11,10 +13,7 @@ import {
   weekRange,
 } from "@/lib/time";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useTodayBookings } from "@/lib/squareBookings";
 
 export default function WorkerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +27,6 @@ export default function WorkerDetailPage() {
     .filter((x) => x.workerId === id)
     .sort((a, b) => b.startAt - a.startAt);
   const now = useNow();
-  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
   if (!worker) {
@@ -60,17 +58,6 @@ export default function WorkerDetailPage() {
     .reduce((acc, s) => acc + durationMs(s, now), 0);
 
   const todaySessions = sessions.filter((s) => s.startAt >= todayStart);
-
-  const { bookings, loading: bookingsLoading, error: bookingsError } = useTodayBookings();
-  const todaySquareIds = new Set(
-    (bookings ?? []).map((b) => b.customerId).filter(Boolean),
-  );
-  const todaysCustomers = customers.filter(
-    (c) => c.squareId && todaySquareIds.has(c.squareId),
-  );
-  const filteredCustomers = search
-    ? customers.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-    : todaysCustomers;
 
   function handleStart(customer: { id: string; squareId?: string; name: string }) {
     if (active) {
@@ -172,148 +159,14 @@ export default function WorkerDetailPage() {
         </section>
       )}
 
-      {!active && (
-        <section className="rounded-3xl bg-card border border-border p-6 sm:p-8 shadow-[var(--shadow-card)]">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-            <div>
-              <h3 className="font-display text-2xl font-semibold">
-                Today's clients
-              </h3>
-              <p className="text-muted-foreground text-sm mt-1">
-                {bookingsLoading
-                  ? "Loading appointments…"
-                  : bookingsError
-                    ? "Could not load appointments from Square."
-                    : `${todaysCustomers.length} ${todaysCustomers.length === 1 ? "client" : "clients"} booked today — tap to start.`}
-              </p>
-            </div>
-            <div className="sm:ml-auto relative w-full sm:w-72">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search all clients"
-                className="pl-9 h-12 rounded-xl"
-              />
-            </div>
-          </div>
-          <div className="rounded-2xl border border-border bg-background overflow-hidden max-h-[480px] overflow-y-auto">
-            {filteredCustomers.length === 0 ? (
-              <div className="text-center text-muted-foreground py-10">
-                {bookingsLoading
-                  ? "Loading appointments…"
-                  : bookingsError
-                    ? "Couldn't load today's appointments from Square."
-                    : search
-                      ? "No clients match your search."
-                      : "No appointments scheduled for today."}
-              </div>
-            ) : (
-              <table className="w-full">
-                <thead className="sticky top-0 bg-muted/60 backdrop-blur">
-                  <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="px-4 py-3 font-medium">Client</th>
-                    <th className="px-4 py-3 font-medium hidden sm:table-cell">Phone</th>
-                    <th className="px-4 py-3 font-medium text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCustomers.map((c, i) => (
-                    <tr
-                      key={c.id}
-                      onClick={() => handleStart({ id: c.id, squareId: c.squareId, name: c.name })}
-                      className={cn(
-                        "cursor-pointer hover:bg-muted/40 transition-colors",
-                        i > 0 && "border-t border-border",
-                      )}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <AvatarTile name={c.name} color={c.color} size="md" />
-                          <span className="font-medium">{c.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">
-                        {c.phone ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStart({ id: c.id, squareId: c.squareId, name: c.name });
-                          }}
-                          className="h-11 rounded-xl"
-                        >
-                          Start
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </section>
-      )}
+      {!active && <TodaysClients customers={customers} onStart={handleStart} />}
 
-      <section>
-        <div className="flex items-baseline gap-3 mb-4">
-          <h3 className="font-display text-2xl font-semibold">Today's sessions</h3>
-          <span className="text-sm text-muted-foreground">
-            {todaySessions.length} {todaySessions.length === 1 ? "entry" : "entries"}
-          </span>
-        </div>
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          {todaySessions.length === 0 && (
-            <div className="p-10 text-center text-muted-foreground">
-              No sessions yet today.
-            </div>
-          )}
-          {todaySessions.map((s, i) => {
-            const c = s.customerSquareId
-              ? allCustomers.find((x) => x.squareId === s.customerSquareId)
-              : null;
-            const name = c?.name ?? s.customerName;
-            const color = c?.color ?? "0 0% 50%";
-            return (
-              <div
-                key={s.id}
-                className={cn(
-                  "flex items-center gap-4 p-4 sm:p-5",
-                  i > 0 && "border-t border-border",
-                  s.endAt === null && "bg-success/5",
-                )}
-              >
-                <AvatarTile name={name} color={color} size="md" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
-                    {name}
-                  </p>
-                  <p className="text-sm text-muted-foreground tabular-nums">
-                    {fmtTime(s.startAt)} —{" "}
-                    {s.endAt ? fmtTime(s.endAt) : <span className="text-success">in progress</span>}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-display text-xl font-semibold tabular-nums">
-                    {formatDuration(durationMs(s, now))}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setEditingId(s.id)}
-                  className="rounded-xl h-12 w-12"
-                  aria-label="Edit session"
-                >
-                  <Pencil className="w-5 h-5" />
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <TodaysSessions
+        sessions={todaySessions}
+        customers={allCustomers}
+        now={now}
+        onEditSession={setEditingId}
+      />
 
       <EditSessionDrawer
         sessionId={editingId}

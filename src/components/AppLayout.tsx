@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
-import { Clock3, Users, UserRound, BarChart3, LogOut } from "lucide-react";
+import { Clock3, Users, UserRound, BarChart3, LogOut, CreditCard } from "lucide-react";
 import { useStore, useNow, loadFromCloud, clearCloudCache } from "@/lib/store";
 import { formatDuration } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -63,6 +63,7 @@ const tabs = [
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/workers", label: "Locticians", icon: UserRound },
   { to: "/report", label: "Weekly", icon: BarChart3 },
+  { to: "/payments", label: "Payments", icon: CreditCard },
 ];
 
 export default function AppLayout() {

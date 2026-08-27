@@ -152,20 +152,52 @@ export const store = {
 
   // Customers (in-memory only, populated by Square sync)
   replaceCustomersFromSquare(
-    incoming: Array<{ squareId: string; name: string; phone?: string; note?: string; email?: string }>,
+    incoming: Array<{
+      squareId: string;
+      name: string;
+      phone?: string;
+      note?: string;
+      email?: string;
+      version: number;
+    }>,
   ) {
     setState((s) => {
       const next: Customer[] = incoming.map((sq, i) => ({
-        id: sq.squareId, // use squareId as local id
+        id: sq.squareId,
         name: sq.name,
         phone: sq.phone,
-        note: sq.note,
+        note: sq.note ?? "",
         email: sq.email,
         color: pickColor(i + 3),
         squareId: sq.squareId,
+        squareVersion: sq.version,
       }));
       return { ...s, customers: next };
     });
+  },
+  applySquareCustomer(incoming: {
+    squareId: string;
+    name: string;
+    phone?: string;
+    note?: string;
+    email?: string;
+    version: number;
+  }) {
+    setState((s) => ({
+      ...s,
+      customers: s.customers.map((customer) =>
+        customer.squareId === incoming.squareId
+          ? {
+              ...customer,
+              name: incoming.name,
+              phone: incoming.phone,
+              note: incoming.note ?? "",
+              email: incoming.email,
+              squareVersion: incoming.version,
+            }
+          : customer,
+      ),
+    }));
   },
 
   // Sessions

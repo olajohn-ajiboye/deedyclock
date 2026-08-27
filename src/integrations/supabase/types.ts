@@ -39,6 +39,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_payments: {
+        Row: {
+          booking_id: string
+          catalog_amount_minor: number
+          created_at: string
+          currency: string
+          customer_name: string
+          customer_square_id: string | null
+          paid_amount_minor: number
+          service_names: string[]
+          start_at: string
+          tip_amount_minor: number
+          unpriced: boolean
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          catalog_amount_minor: number
+          created_at?: string
+          currency: string
+          customer_name: string
+          customer_square_id?: string | null
+          paid_amount_minor: number
+          service_names?: string[]
+          start_at: string
+          tip_amount_minor?: number
+          unpriced?: boolean
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          catalog_amount_minor?: number
+          created_at?: string
+          currency?: string
+          customer_name?: string
+          customer_square_id?: string | null
+          paid_amount_minor?: number
+          service_names?: string[]
+          start_at?: string
+          tip_amount_minor?: number
+          unpriced?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      appointment_images: {
+        Row: {
+          appointment_key: string
+          content_type: string
+          created_at: string
+          id: string
+          storage_path: string
+        }
+        Insert: {
+          appointment_key: string
+          content_type: string
+          created_at?: string
+          id?: string
+          storage_path: string
+        }
+        Update: {
+          appointment_key?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           created_at: string

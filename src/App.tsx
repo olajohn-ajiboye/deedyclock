@@ -9,6 +9,9 @@ import WorkerDetailPage from "./pages/WorkerDetailPage";
 import CustomersPage from "./pages/CustomersPage";
 import WorkersPage from "./pages/WorkersPage";
 import WeeklyReportPage from "./pages/WeeklyReportPage";
+import PaymentsPage from "./pages/PaymentsPage";
+import { PaymentsPinLock } from "@/components/PaymentsPinLock";
+import CustomerProfilePage from "./pages/CustomerProfilePage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -27,8 +30,17 @@ const App = () => {
               <Route path="/" element={<WorkerGridPage />} />
               <Route path="/worker/:id" element={<WorkerDetailPage />} />
               <Route path="/customers" element={<CustomersPage />} />
+              <Route path="/customers/:squareId" element={<CustomerProfilePage />} />
               <Route path="/workers" element={<WorkersPage />} />
               <Route path="/report" element={<WeeklyReportPage />} />
+              <Route
+                path="/payments"
+                element={
+                  <PaymentsPinLock>
+                    <PaymentsPage />
+                  </PaymentsPinLock>
+                }
+              />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -12,6 +12,7 @@ export interface AppointmentPaymentRow {
   booking_id: string;
   paid_amount_minor: number;
   tip_amount_minor: number;
+  product_amount_minor: number;
 }
 
 export interface AppointmentPaymentInsert {
@@ -22,6 +23,7 @@ export interface AppointmentPaymentInsert {
   catalog_amount_minor: number;
   paid_amount_minor: number;
   tip_amount_minor: number;
+  product_amount_minor: number;
   currency: string;
   service_names: string[];
   unpriced: boolean;
@@ -41,10 +43,12 @@ export function editsFromStoredRows(
       ? {
           paidAmountMinor: row.paid_amount_minor,
           tipAmountMinor: row.tip_amount_minor,
+          productAmountMinor: row.product_amount_minor ?? 0,
         }
       : {
           paidAmountMinor: appointment.amountMinor,
           tipAmountMinor: 0,
+          productAmountMinor: 0,
         };
   }
   return edits;
@@ -65,6 +69,7 @@ export function copiesToInsert(
       catalog_amount_minor: appointment.amountMinor,
       paid_amount_minor: appointment.amountMinor,
       tip_amount_minor: 0,
+      product_amount_minor: 0,
       currency: appointment.currency,
       service_names: appointment.serviceNames,
       unpriced: appointment.unpriced,
@@ -84,7 +89,7 @@ async function fetchStoredRows(bookingIds: string[]): Promise<AppointmentPayment
   for (const idChunk of chunks(bookingIds, ID_CHUNK)) {
     const { data, error } = await supabase
       .from("appointment_payments")
-      .select("booking_id, paid_amount_minor, tip_amount_minor")
+      .select("booking_id, paid_amount_minor, tip_amount_minor, product_amount_minor")
       .in("booking_id", idChunk);
     if (error) {
       throw new Error(error.message);
@@ -120,14 +125,14 @@ export async function syncAppointmentPaymentCopies(
 
 export async function saveAppointmentPayment(
   bookingId: string,
-  paidAmountMinor: number,
-  tipAmountMinor: number,
+  edit: AppointmentPaymentEdit,
 ): Promise<void> {
   const { error } = await supabase
     .from("appointment_payments")
     .update({
-      paid_amount_minor: paidAmountMinor,
-      tip_amount_minor: tipAmountMinor,
+      paid_amount_minor: edit.paidAmountMinor,
+      tip_amount_minor: edit.tipAmountMinor,
+      product_amount_minor: edit.productAmountMinor,
     })
     .eq("booking_id", bookingId);
   if (error) {

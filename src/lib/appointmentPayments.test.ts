@@ -34,11 +34,12 @@ describe("editsFromStoredRows", () => {
           booking_id: "b1",
           paid_amount_minor: 8_000,
           tip_amount_minor: 2_000,
+          product_amount_minor: 1_500,
         },
       ]),
     ).toEqual({
-      b1: { paidAmountMinor: 8_000, tipAmountMinor: 2_000 },
-      b2: { paidAmountMinor: 5_000, tipAmountMinor: 0 },
+      b1: { paidAmountMinor: 8_000, tipAmountMinor: 2_000, productAmountMinor: 1_500 },
+      b2: { paidAmountMinor: 5_000, tipAmountMinor: 0, productAmountMinor: 0 },
     });
   });
 });
@@ -58,6 +59,7 @@ describe("copiesToInsert", () => {
         catalog_amount_minor: 5_000,
         paid_amount_minor: 5_000,
         tip_amount_minor: 0,
+        product_amount_minor: 0,
         currency: "CAD",
         service_names: ["Wash"],
         unpriced: false,

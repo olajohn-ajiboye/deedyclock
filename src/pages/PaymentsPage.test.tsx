@@ -15,16 +15,25 @@ vi.mock("@/lib/appointmentPayments", () => ({
   syncAppointmentPaymentCopies: vi.fn(),
 }));
 
-vi.mock("@/lib/appointmentImages", () => ({
-  listAppointmentImages: vi.fn().mockResolvedValue([]),
-  uploadAppointmentImage: vi.fn(),
-  deleteAppointmentImage: vi.fn(),
-  publicUrlForAppointmentImage: vi.fn(() => "https://img.test/photo.jpg"),
-}));
-
 vi.mock("@/lib/store", () => ({
-  useStore: (selector: (state: { customers: unknown[] }) => unknown) =>
-    selector({ customers: [{ squareId: "c1", name: "Ada" }] }),
+  useStore: (
+    selector: (state: { customers: unknown[]; sessions: unknown[] }) => unknown,
+  ) =>
+    selector({
+      customers: [{ squareId: "c1", name: "Ada" }],
+      sessions: [
+        {
+          id: "s1",
+          workerId: "w1",
+          customerSquareId: "c1",
+          customerName: "Ada",
+          startAt: Date.parse("2026-08-20T12:00:00Z"),
+          endAt: Date.parse("2026-08-20T13:00:00Z"),
+          createdAt: Date.parse("2026-08-20T12:00:00Z"),
+          updatedAt: Date.parse("2026-08-20T13:00:00Z"),
+        },
+      ],
+    }),
 }));
 
 describe("PaymentsPage", () => {
@@ -41,7 +50,7 @@ describe("PaymentsPage", () => {
       },
     ]);
     vi.mocked(syncAppointmentPaymentCopies).mockResolvedValue({
-      b1: { paidAmountMinor: 10_000, tipAmountMinor: 2_000 },
+      b1: { paidAmountMinor: 10_000, tipAmountMinor: 2_000, productAmountMinor: 1_500 },
     });
   });
 
@@ -55,11 +64,11 @@ describe("PaymentsPage", () => {
     expect(await screen.findByText("Booked appointment totals")).toBeInTheDocument();
     expect(screen.getByText(format(new Date(), "MMMM yyyy"))).toBeInTheDocument();
     expect(
-      screen.getByText(/Square catalog service prices/i),
+      screen.getByText(/completed sessions over booked/i),
     ).toBeInTheDocument();
   });
 
-  it("lists each appointment with its date, customer, service, paid amount, and tip", async () => {
+  it("lists each appointment with its date, customer, service, cost, tip, and product", async () => {
     render(
       <MemoryRouter>
         <PaymentsPage />
@@ -69,13 +78,27 @@ describe("PaymentsPage", () => {
     expect(await screen.findByText("Ada")).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Date" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Customer" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Photos" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Paid" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Photos" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Cost" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Tip" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Product" })).toBeInTheDocument();
     expect(screen.getByText("Retwist")).toBeInTheDocument();
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Paid for Ada")).toHaveTextContent(/100/);
+    expect(screen.getByLabelText("Cost for Ada")).toHaveTextContent(/100/);
     expect(screen.getByLabelText("Tip for Ada")).toHaveTextContent(/20/);
+    expect(screen.getByLabelText("Product for Ada")).toHaveTextContent(/15/);
+    expect(screen.getByLabelText("Cost $100")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tip $20")).toBeInTheDocument();
+    expect(screen.getByLabelText("Product $15")).toBeInTheDocument();
+    expect(screen.getByText("$135")).toBeInTheDocument();
+    expect(screen.queryByText(/tips \$/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Weekly" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Daily" })).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Daily" }));
+
+    expect(screen.getByRole("button", { name: "Daily" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Cost $100")).toBeInTheDocument();
   });
 
   it("reflects stored paid and tip totals without offering editors", async () => {
@@ -85,10 +108,19 @@ describe("PaymentsPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("status", { name: "Paid total" })).toHaveTextContent(/100/);
+    expect(await screen.findByRole("status", { name: "Cost total" })).toHaveTextContent(/100.*\/.*100/);
     expect(screen.getByRole("status", { name: "Tips total" })).toHaveTextContent(/20/);
+    expect(screen.getByRole("status", { name: "Product total" })).toHaveTextContent(/15/);
+    expect(screen.getByRole("status", { name: "Appointments total" })).toHaveTextContent("1 / 1");
+    expect(screen.getByRole("status", { name: "Customers total" })).toHaveTextContent("1 / 1");
     expect(
-      screen.getByText(/entered from today's sessions/i),
+      screen.getAllByText(
+        (_content, element) =>
+          element?.tagName === "P" && element.textContent === "completed / booked",
+      ),
+    ).toHaveLength(3);
+    expect(
+      screen.getByText(/completed sessions over booked/i),
     ).toBeInTheDocument();
   });
 

@@ -61,12 +61,12 @@ describe("TodaysSessions", () => {
       },
     ]);
     vi.mocked(syncAppointmentPaymentCopies).mockResolvedValue({
-      b1: { paidAmountMinor: 12_500, tipAmountMinor: 0 },
+      b1: { paidAmountMinor: 12_500, tipAmountMinor: 0, productAmountMinor: 0 },
     });
     vi.mocked(saveAppointmentPayment).mockResolvedValue(undefined);
   });
 
-  it("lets the user edit cost and tip without starting a session", async () => {
+  it("lets the user edit cost, tip, and product without starting a session", async () => {
     render(
       <MemoryRouter>
         <TodaysSessions
@@ -90,8 +90,10 @@ describe("TodaysSessions", () => {
 
     const cost = await screen.findByLabelText("Cost for Ada");
     const tip = screen.getByLabelText("Tip for Ada");
+    const product = screen.getByLabelText("Product for Ada");
     expect(screen.getByText("Cost")).toBeInTheDocument();
     expect(screen.getByText("Tip")).toBeInTheDocument();
+    expect(screen.getByText("Product")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit notes for Ada" })).toBeInTheDocument();
     expect(screen.queryByText(/Paid for/i)).not.toBeInTheDocument();
 
@@ -100,10 +102,25 @@ describe("TodaysSessions", () => {
     fireEvent.blur(cost);
     fireEvent.change(tip, { target: { value: "20" } });
     fireEvent.blur(tip);
+    fireEvent.change(product, { target: { value: "15" } });
+    fireEvent.blur(product);
 
     await waitFor(() => {
-      expect(saveAppointmentPayment).toHaveBeenCalledWith("b1", 10_000, 0);
-      expect(saveAppointmentPayment).toHaveBeenCalledWith("b1", 10_000, 2_000);
+      expect(saveAppointmentPayment).toHaveBeenCalledWith("b1", {
+        paidAmountMinor: 10_000,
+        tipAmountMinor: 0,
+        productAmountMinor: 0,
+      });
+      expect(saveAppointmentPayment).toHaveBeenCalledWith("b1", {
+        paidAmountMinor: 10_000,
+        tipAmountMinor: 2_000,
+        productAmountMinor: 0,
+      });
+      expect(saveAppointmentPayment).toHaveBeenCalledWith("b1", {
+        paidAmountMinor: 10_000,
+        tipAmountMinor: 2_000,
+        productAmountMinor: 1_500,
+      });
     });
     expect(screen.queryByRole("button", { name: "Start" })).not.toBeInTheDocument();
     expect(onEditSession).not.toHaveBeenCalled();

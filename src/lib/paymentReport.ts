@@ -1,4 +1,7 @@
+import { startOfWeek } from "date-fns";
+
 export type PaymentPeriod = "day" | "month" | "year";
+export type ChartScale = "week" | "day";
 
 export interface SquarePaymentRecord {
   id: string;
@@ -23,6 +26,7 @@ interface CustomerReference {
 export interface AppointmentPaymentEdit {
   paidAmountMinor: number;
   tipAmountMinor: number;
+  productAmountMinor: number;
 }
 
 export interface PaymentReportItem {
@@ -33,6 +37,7 @@ export interface PaymentReportItem {
   catalogAmountMinor: number;
   paidAmountMinor: number;
   tipAmountMinor: number;
+  productAmountMinor: number;
   amountMinor: number;
   serviceNames: string[];
   unpriced: boolean;
@@ -43,6 +48,7 @@ export interface PaymentBucket {
   label: string;
   amountMinor: number;
   tipAmountMinor: number;
+  productAmountMinor: number;
 }
 
 export interface PaymentReport {
@@ -50,8 +56,12 @@ export interface PaymentReport {
   totalAmountMinor: number;
   totalPaidMinor: number;
   totalTipMinor: number;
+  totalProductMinor: number;
   paymentCount: number;
   customerCount: number;
+  completedPaidMinor: number;
+  completedPaymentCount: number;
+  completedCustomerCount: number;
   items: PaymentReportItem[];
   buckets: PaymentBucket[];
 }
@@ -79,13 +89,24 @@ function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-function bucketFor(payment: SquarePaymentRecord, period: PaymentPeriod): { key: string; label: string } {
+function bucketFor(
+  payment: SquarePaymentRecord,
+  period: PaymentPeriod,
+  chartScale: ChartScale,
+): { key: string; label: string } {
   const date = new Date(payment.createdAt);
   if (period === "day") {
     const hour = date.getHours();
     return {
       key: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}-${pad(hour)}`,
       label: new Intl.DateTimeFormat(undefined, { hour: "numeric" }).format(date),
+    };
+  }
+  if (period === "month" && chartScale === "week") {
+    const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+    return {
+      key: `${weekStart.getFullYear()}-${pad(weekStart.getMonth() + 1)}-${pad(weekStart.getDate())}`,
+      label: new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(weekStart),
     };
   }
   if (period === "month") {
@@ -123,6 +144,8 @@ export function buildPaymentReport(
   customers: CustomerReference[],
   period: PaymentPeriod,
   edits: Record<string, AppointmentPaymentEdit> = {},
+  completedIds: Set<string> = new Set(),
+  chartScale: ChartScale = "day",
 ): PaymentReport {
   const currencies = new Set(payments.map((payment) => payment.currency));
   if (currencies.size > 1) {
@@ -133,21 +156,32 @@ export function buildPaymentReport(
   const bucketTotals = new Map<string, PaymentBucket>();
   let totalPaidMinor = 0;
   let totalTipMinor = 0;
+  let totalProductMinor = 0;
+  let completedPaidMinor = 0;
+  const completedCustomerIds = new Set<string>();
 
   for (const payment of payments) {
     const paidAmountMinor = edits[payment.id]?.paidAmountMinor ?? payment.amountMinor;
     const tipAmountMinor = edits[payment.id]?.tipAmountMinor ?? 0;
+    const productAmountMinor = edits[payment.id]?.productAmountMinor ?? 0;
     totalPaidMinor += paidAmountMinor;
     totalTipMinor += tipAmountMinor;
+    totalProductMinor += productAmountMinor;
+    if (completedIds.has(payment.id)) {
+      completedPaidMinor += paidAmountMinor;
+      if (payment.customerId) completedCustomerIds.add(payment.customerId);
+    }
 
-    const bucket = bucketFor(payment, period);
+    const bucket = bucketFor(payment, period, chartScale);
     const existingBucket = bucketTotals.get(bucket.key) ?? {
       ...bucket,
       amountMinor: 0,
       tipAmountMinor: 0,
+      productAmountMinor: 0,
     };
     existingBucket.amountMinor += paidAmountMinor;
     existingBucket.tipAmountMinor += tipAmountMinor;
+    existingBucket.productAmountMinor += productAmountMinor;
     bucketTotals.set(bucket.key, existingBucket);
   }
 
@@ -155,17 +189,22 @@ export function buildPaymentReport(
     currency: payments[0]?.currency ?? "CAD",
     totalPaidMinor,
     totalTipMinor,
-    totalAmountMinor: totalPaidMinor + totalTipMinor,
+    totalProductMinor,
+    totalAmountMinor: totalPaidMinor + totalTipMinor + totalProductMinor,
     paymentCount: payments.length,
     customerCount: new Set(
       payments
         .map((payment) => payment.customerId)
         .filter((customerId): customerId is string => customerId !== null),
     ).size,
+    completedPaidMinor,
+    completedPaymentCount: payments.filter((payment) => completedIds.has(payment.id)).length,
+    completedCustomerCount: completedCustomerIds.size,
     items: payments
       .map((payment) => {
         const paidAmountMinor = edits[payment.id]?.paidAmountMinor ?? payment.amountMinor;
         const tipAmountMinor = edits[payment.id]?.tipAmountMinor ?? 0;
+        const productAmountMinor = edits[payment.id]?.productAmountMinor ?? 0;
         return {
           id: payment.id,
           customerId: payment.customerId,
@@ -174,7 +213,8 @@ export function buildPaymentReport(
           catalogAmountMinor: payment.amountMinor,
           paidAmountMinor,
           tipAmountMinor,
-          amountMinor: paidAmountMinor + tipAmountMinor,
+          productAmountMinor,
+          amountMinor: paidAmountMinor + tipAmountMinor + productAmountMinor,
           serviceNames: payment.serviceNames,
           unpriced: payment.unpriced,
         };

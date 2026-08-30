@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appointmentForSession } from "./sessionAppointments";
+import { appointmentForSession, completedAppointmentIds } from "./sessionAppointments";
 import type { SquarePaymentRecord } from "./paymentReport";
 
 const appointments: SquarePaymentRecord[] = [
@@ -41,6 +41,26 @@ describe("appointmentForSession", () => {
         claimed,
       )?.id,
     ).toBe("morning");
+  });
+
+  it("treats only finished sessions as completed appointments", () => {
+    expect(
+      completedAppointmentIds(
+        [
+          {
+            customerSquareId: "c1",
+            startAt: Date.parse("2026-08-26T20:05:00.000Z"),
+            endAt: Date.parse("2026-08-26T21:00:00.000Z"),
+          },
+          {
+            customerSquareId: "c1",
+            startAt: Date.parse("2026-08-26T15:10:00.000Z"),
+            endAt: null,
+          },
+        ],
+        appointments,
+      ),
+    ).toEqual(new Set(["afternoon"]));
   });
 
   it("returns nothing when the session has no Square customer", () => {

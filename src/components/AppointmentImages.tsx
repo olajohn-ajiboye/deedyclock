@@ -2,6 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -188,6 +198,8 @@ export function AppointmentImageGallery({
   AppointmentImagePartsProps,
   "customerName" | "className" | "images" | "busy" | "expanded" | "setExpanded" | "remove"
 >) {
+  const [pendingDelete, setPendingDelete] = useState<AppointmentImage | null>(null);
+
   if (images.length === 0) return null;
 
   return (
@@ -214,7 +226,7 @@ export function AppointmentImageGallery({
               disabled={busy}
               onClick={(event) => {
                 event.stopPropagation();
-                void remove(image);
+                setPendingDelete(image);
               }}
             >
               <X className="h-3 w-3" />
@@ -222,6 +234,33 @@ export function AppointmentImageGallery({
           </div>
         ))}
       </div>
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the photo. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (pendingDelete) void remove(pendingDelete);
+              }}
+            >
+              Delete photo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={expanded !== null} onOpenChange={(open) => !open && setExpanded(null)}>
         <DialogContent className="max-w-[min(100vw-2rem,42rem)] border-0 bg-black/95 p-2 sm:p-3">

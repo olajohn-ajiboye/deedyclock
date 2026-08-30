@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppointmentImages } from "./AppointmentImages";
 import {
+  deleteAppointmentImage,
   listAppointmentImages,
   uploadAppointmentImage,
 } from "@/lib/appointmentImages";
@@ -63,5 +64,39 @@ describe("AppointmentImages", () => {
       "src",
       "https://img.test/b1/img1.jpg",
     );
+  });
+
+  it("asks for confirmation before deleting a photo", async () => {
+    const image = {
+      id: "img1",
+      appointmentKey: "b1",
+      storagePath: "b1/img1.jpg",
+      contentType: "image/jpeg",
+      createdAt: new Date().toISOString(),
+    };
+    vi.mocked(listAppointmentImages).mockResolvedValue([image]);
+    vi.mocked(deleteAppointmentImage).mockResolvedValue(undefined);
+
+    render(<AppointmentImages appointmentKey="b1" customerName="Ada" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Remove photo for Ada" }));
+
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.getByText("Delete this photo?")).toBeInTheDocument();
+    expect(deleteAppointmentImage).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    });
+    expect(deleteAppointmentImage).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove photo for Ada" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete photo" }));
+
+    await waitFor(() => {
+      expect(deleteAppointmentImage).toHaveBeenCalledWith(image);
+    });
   });
 });

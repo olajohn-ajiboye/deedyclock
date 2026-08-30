@@ -135,6 +135,7 @@ describe("buildPaymentReport", () => {
     expect(report.totalAmountMinor).toBe(17_500);
     expect(report.totalPaidMinor).toBe(17_500);
     expect(report.totalTipMinor).toBe(0);
+    expect(report.totalProductMinor).toBe(0);
     expect(report.paymentCount).toBe(3);
     expect(report.items).toEqual([
       {
@@ -145,6 +146,7 @@ describe("buildPaymentReport", () => {
         catalogAmountMinor: 2_500,
         paidAmountMinor: 2_500,
         tipAmountMinor: 0,
+        productAmountMinor: 0,
         amountMinor: 2_500,
         serviceNames: ["Consultation"],
         unpriced: false,
@@ -157,6 +159,7 @@ describe("buildPaymentReport", () => {
         catalogAmountMinor: 5_000,
         paidAmountMinor: 5_000,
         tipAmountMinor: 0,
+        productAmountMinor: 0,
         amountMinor: 5_000,
         serviceNames: ["Wash"],
         unpriced: false,
@@ -169,6 +172,7 @@ describe("buildPaymentReport", () => {
         catalogAmountMinor: 10_000,
         paidAmountMinor: 10_000,
         tipAmountMinor: 0,
+        productAmountMinor: 0,
         amountMinor: 10_000,
         serviceNames: ["Retwist"],
         unpriced: false,
@@ -192,20 +196,22 @@ describe("buildPaymentReport", () => {
       [{ squareId: "c1", name: "Ada" }],
       "month",
       {
-        b1: { paidAmountMinor: 8_000, tipAmountMinor: 2_000 },
-        b2: { paidAmountMinor: 5_000, tipAmountMinor: 500 },
+        b1: { paidAmountMinor: 8_000, tipAmountMinor: 2_000, productAmountMinor: 1_500 },
+        b2: { paidAmountMinor: 5_000, tipAmountMinor: 500, productAmountMinor: 0 },
       },
     );
 
     expect(report.totalPaidMinor).toBe(15_500);
     expect(report.totalTipMinor).toBe(2_500);
-    expect(report.totalAmountMinor).toBe(18_000);
+    expect(report.totalProductMinor).toBe(1_500);
+    expect(report.totalAmountMinor).toBe(19_500);
     expect(report.items[2]).toMatchObject({
       id: "b1",
       catalogAmountMinor: 10_000,
       paidAmountMinor: 8_000,
       tipAmountMinor: 2_000,
-      amountMinor: 10_000,
+      productAmountMinor: 1_500,
+      amountMinor: 11_500,
     });
   });
 
@@ -215,8 +221,8 @@ describe("buildPaymentReport", () => {
       [],
       "month",
       {
-        b2: { paidAmountMinor: 5_000, tipAmountMinor: 2_000 },
-        b3: { paidAmountMinor: 2_500, tipAmountMinor: 500 },
+        b2: { paidAmountMinor: 5_000, tipAmountMinor: 2_000, productAmountMinor: 3_000 },
+        b3: { paidAmountMinor: 2_500, tipAmountMinor: 500, productAmountMinor: 0 },
       },
     );
     const augustSecond = report.buckets.find((bucket) => bucket.key.endsWith("08-02"));
@@ -224,6 +230,45 @@ describe("buildPaymentReport", () => {
     expect(augustSecond).toMatchObject({
       amountMinor: 7_500,
       tipAmountMinor: 2_500,
+      productAmountMinor: 3_000,
+    });
+  });
+
+  it("splits completed-session income from remaining booked totals", () => {
+    const report = buildPaymentReport(
+      appointments,
+      [{ squareId: "c1", name: "Ada" }],
+      "month",
+      {
+        b1: { paidAmountMinor: 8_000, tipAmountMinor: 2_000, productAmountMinor: 0 },
+        b2: { paidAmountMinor: 5_000, tipAmountMinor: 0, productAmountMinor: 0 },
+      },
+      new Set(["b1"]),
+    );
+
+    expect(report.completedPaidMinor).toBe(8_000);
+    expect(report.totalPaidMinor).toBe(15_500);
+    expect(report.completedPaymentCount).toBe(1);
+    expect(report.paymentCount).toBe(3);
+    expect(report.completedCustomerCount).toBe(1);
+    expect(report.customerCount).toBe(1);
+  });
+
+  it("groups a month chart by week when the weekly scale is selected", () => {
+    const report = buildPaymentReport(
+      appointments,
+      [],
+      "month",
+      {},
+      new Set(),
+      "week",
+    );
+
+    expect(report.buckets).toHaveLength(1);
+    expect(report.buckets[0]).toMatchObject({
+      amountMinor: 17_500,
+      tipAmountMinor: 0,
+      productAmountMinor: 0,
     });
   });
 });

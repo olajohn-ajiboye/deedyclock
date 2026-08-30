@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { addDays, addMonths, addYears, format } from "date-fns";
 import {
   CalendarCheck,
@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AvatarTile } from "@/components/AvatarTile";
-import { AppointmentImages } from "@/components/AppointmentImages";
 import { customerProfilePath } from "@/lib/customerHistory";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
@@ -18,9 +17,11 @@ import {
   formatMoney,
   getPaymentRange,
   type AppointmentPaymentEdit,
+  type ChartScale,
   type PaymentPeriod,
   type SquarePaymentRecord,
 } from "@/lib/paymentReport";
+import { completedAppointmentIds } from "@/lib/sessionAppointments";
 import { fetchSquareBookedAppointments } from "@/lib/squarePayments";
 
 const periodLabels: Record<PaymentPeriod, string> = {
@@ -31,6 +32,7 @@ const periodLabels: Record<PaymentPeriod, string> = {
 
 export default function PaymentsPage() {
   const customers = useStore((state) => state.customers);
+  const sessions = useStore((state) => state.sessions);
   const customersRef = useRef(customers);
   customersRef.current = customers;
   const [period, setPeriod] = useState<PaymentPeriod>("month");
@@ -40,6 +42,7 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [chartScale, setChartScale] = useState<ChartScale>("week");
 
   const range = useMemo(
     () => getPaymentRange(period, anchor),
@@ -73,22 +76,37 @@ export default function PaymentsPage() {
     return () => controller.abort();
   }, [range, refreshKey]);
 
+  const completedIds = useMemo(
+    () => completedAppointmentIds(sessions, appointments),
+    [sessions, appointments],
+  );
+
   const reportResult = useMemo(() => {
     try {
-      return { report: buildPaymentReport(appointments, customers, period, edits), error: null };
+      return {
+        report: buildPaymentReport(
+          appointments,
+          customers,
+          period,
+          edits,
+          completedIds,
+          chartScale,
+        ),
+        error: null,
+      };
     } catch (error) {
       return {
         report: null,
         error: error instanceof Error ? error.message : "Appointment totals are invalid",
       };
     }
-  }, [appointments, customers, period, edits]);
+  }, [appointments, customers, period, edits, completedIds, chartScale]);
 
   const report = reportResult.report;
   const error = fetchError ?? reportResult.error;
   const maxBucketAmount = Math.max(
     1,
-    ...(report?.buckets.map((bucket) => bucket.amountMinor) ?? []),
+    ...(report?.buckets.map(bucketTotalMinor) ?? []),
   );
 
   const periodTitle =
@@ -117,10 +135,10 @@ export default function PaymentsPage() {
             Booked appointment totals
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Totals start from Square catalog service prices for each booked appointment. Paid prices
-            and tips are entered from today's sessions; this page reflects those stored amounts.
-            Optional tips are added to the total but shown separately. Cancelled, declined, and
-            no-show appointments are excluded.
+            Cost, appointments, and customers show completed sessions over booked Square
+            appointments. Completed is income already clocked; booked is still on the calendar.
+            Service cost, tips, and product sales are entered from sessions and kept separate for
+            accounting. Cancelled, declined, and no-show appointments are excluded.
           </p>
         </div>
 
@@ -187,11 +205,21 @@ export default function PaymentsPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <SummaryCard
-          label="Paid"
-          value={report ? formatMoney(report.totalPaidMinor, report.currency) : "—"}
-          ariaLabel="Paid total"
+          label="Cost"
+          value={
+            report ? (
+              <CompletedBookedValue
+                completed={formatMoney(report.completedPaidMinor, report.currency)}
+                booked={formatMoney(report.totalPaidMinor, report.currency)}
+              />
+            ) : (
+              "—"
+            )
+          }
+          hint="completed / booked"
+          ariaLabel="Cost total"
         />
         <SummaryCard
           label="Tips"
@@ -199,12 +227,39 @@ export default function PaymentsPage() {
           ariaLabel="Tips total"
         />
         <SummaryCard
+          label="Product"
+          value={report ? formatMoney(report.totalProductMinor, report.currency) : "—"}
+          ariaLabel="Product total"
+        />
+        <SummaryCard
           label="Appointments"
-          value={report ? String(report.paymentCount) : "—"}
+          value={
+            report ? (
+              <CompletedBookedValue
+                completed={String(report.completedPaymentCount)}
+                booked={String(report.paymentCount)}
+              />
+            ) : (
+              "—"
+            )
+          }
+          hint="completed / booked"
+          ariaLabel="Appointments total"
         />
         <SummaryCard
           label="Customers"
-          value={report ? String(report.customerCount) : "—"}
+          value={
+            report ? (
+              <CompletedBookedValue
+                completed={String(report.completedCustomerCount)}
+                booked={String(report.customerCount)}
+              />
+            ) : (
+              "—"
+            )
+          }
+          hint="completed / booked"
+          ariaLabel="Customers total"
         />
       </div>
 
@@ -216,8 +271,39 @@ export default function PaymentsPage() {
       ) : null}
 
       <section className="rounded-3xl bg-card border border-border shadow-[var(--shadow-card)] overflow-hidden">
-        <div className="p-5 sm:p-6 border-b border-border">
+        <div className="p-5 sm:p-6 border-b border-border flex flex-wrap items-end justify-between gap-3">
           <h3 className="font-display text-2xl font-semibold">Booked over time</h3>
+          <div className="flex flex-wrap items-center gap-3">
+            {period === "month" ? (
+              <div className="flex rounded-xl border border-border bg-muted/40 p-1">
+                {(["week", "day"] as ChartScale[]).map((scale) => (
+                  <Button
+                    key={scale}
+                    variant={chartScale === scale ? "secondary" : "ghost"}
+                    className="rounded-lg h-8 px-3"
+                    aria-pressed={chartScale === scale}
+                    onClick={() => setChartScale(scale)}
+                  >
+                    {scale === "week" ? "Weekly" : "Daily"}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
+                Cost
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-sm bg-accent" />
+                Tip
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-sm bg-[hsl(var(--primary-glow))]" />
+                Product
+              </span>
+            </div>
+          </div>
         </div>
         <div className="p-5 sm:p-6">
           {loading ? (
@@ -225,33 +311,49 @@ export default function PaymentsPage() {
               Loading booked appointments from Square…
             </p>
           ) : report && report.buckets.length > 0 ? (
-            <div className="flex items-end gap-0.5 min-h-40 overflow-x-auto">
-              {report.buckets.map((bucket) => (
-                <div
-                  key={bucket.key}
-                  className="flex min-w-6 flex-1 flex-col items-center gap-1"
-                >
-                  <p className="text-[10px] font-medium tabular-nums leading-none">
-                    {formatMoney(bucket.amountMinor, report.currency)}
-                  </p>
-                  {bucket.tipAmountMinor > 0 ? (
-                    <p className="text-[10px] text-muted-foreground tabular-nums leading-none">
-                      tips {formatMoney(bucket.tipAmountMinor, report.currency)}
+            <div className="flex items-end gap-1 min-h-48 overflow-x-auto">
+              {report.buckets.map((bucket) => {
+                const totalMinor = bucketTotalMinor(bucket);
+                return (
+                  <div
+                    key={bucket.key}
+                    className="flex min-w-8 flex-1 flex-col items-center gap-1"
+                  >
+                    <div className="h-40 w-full pt-6 flex items-end">
+                      <div
+                        className="relative w-full flex flex-col-reverse overflow-visible"
+                        style={{
+                          height: `${Math.max(8, (totalMinor / maxBucketAmount) * 100)}%`,
+                        }}
+                      >
+                        <p className="absolute left-0 right-0 bottom-full pb-[5px] text-center text-[10px] font-medium tabular-nums leading-none">
+                          {formatChartNumber(totalMinor)}
+                        </p>
+                        <div className="flex h-full w-full flex-col-reverse overflow-hidden">
+                          <StackedSegment
+                            amountMinor={bucket.amountMinor}
+                            className="bg-primary text-white"
+                            label="Cost"
+                          />
+                          <StackedSegment
+                            amountMinor={bucket.tipAmountMinor}
+                            className="bg-accent text-white"
+                            label="Tip"
+                          />
+                          <StackedSegment
+                            amountMinor={bucket.productAmountMinor}
+                            className="bg-[hsl(var(--primary-glow))] text-white"
+                            label="Product"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-none text-center whitespace-nowrap">
+                      {bucket.label}
                     </p>
-                  ) : null}
-                  <div className="h-28 w-full flex items-end">
-                    <div
-                      className="w-full bg-primary"
-                      style={{
-                        height: `${Math.max(4, (bucket.amountMinor / maxBucketAmount) * 100)}%`,
-                      }}
-                    />
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-none text-center whitespace-nowrap">
-                    {bucket.label}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="py-12 text-center text-muted-foreground">
@@ -265,26 +367,27 @@ export default function PaymentsPage() {
         <div className="p-5 sm:p-6 border-b border-border">
           <h3 className="font-display text-2xl font-semibold">Appointments</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Stored paid amounts and tips for every booked appointment in this period, newest first.
+            Stored service cost, tips, and product sales for every booked appointment in this
+            period, newest first.
           </p>
         </div>
         {!loading && report && report.items.length > 0 ? (
           <div>
             <div
               role="row"
-              className="hidden sm:grid grid-cols-[minmax(7rem,0.7fr)_minmax(11rem,1.3fr)_minmax(9rem,1.1fr)_minmax(6.5rem,0.5fr)_minmax(6.5rem,0.5fr)] gap-4 px-6 py-3 bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground"
+              className="hidden sm:grid grid-cols-[minmax(7rem,0.7fr)_minmax(11rem,1.3fr)_minmax(5.5rem,0.45fr)_minmax(5.5rem,0.45fr)_minmax(5.5rem,0.45fr)] gap-4 px-6 py-3 bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground"
             >
               <span role="columnheader">Date</span>
               <span role="columnheader">Customer</span>
-              <span role="columnheader">Photos</span>
-              <span role="columnheader" className="text-right">Paid</span>
+              <span role="columnheader" className="text-right">Cost</span>
               <span role="columnheader" className="text-right">Tip</span>
+              <span role="columnheader" className="text-right">Product</span>
             </div>
             <div className="divide-y divide-border">
               {report.items.map((appointment) => (
                 <div
                   key={appointment.id}
-                  className="grid grid-cols-2 sm:grid-cols-[minmax(7rem,0.7fr)_minmax(11rem,1.3fr)_minmax(9rem,1.1fr)_minmax(6.5rem,0.5fr)_minmax(6.5rem,0.5fr)] gap-3 sm:gap-4 items-center p-4 sm:px-6"
+                  className="grid grid-cols-2 sm:grid-cols-[minmax(7rem,0.7fr)_minmax(11rem,1.3fr)_minmax(5.5rem,0.45fr)_minmax(5.5rem,0.45fr)_minmax(5.5rem,0.45fr)] gap-3 sm:gap-4 items-center p-4 sm:px-6"
                 >
                   <div>
                     <p className="text-sm font-medium">
@@ -317,16 +420,10 @@ export default function PaymentsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="col-span-2 sm:col-span-1 min-w-0">
-                    <AppointmentImages
-                      appointmentKey={appointment.id}
-                      customerName={appointment.customerName}
-                    />
-                  </div>
                   <p
                     className="text-right font-display text-xl font-semibold tabular-nums"
                     role="status"
-                    aria-label={`Paid for ${appointment.customerName}`}
+                    aria-label={`Cost for ${appointment.customerName}`}
                   >
                     {formatMoney(appointment.paidAmountMinor, report.currency)}
                     {appointment.unpriced && appointment.paidAmountMinor === 0 ? "*" : ""}
@@ -337,6 +434,13 @@ export default function PaymentsPage() {
                     aria-label={`Tip for ${appointment.customerName}`}
                   >
                     {formatMoney(appointment.tipAmountMinor, report.currency)}
+                  </p>
+                  <p
+                    className="text-right font-medium tabular-nums text-muted-foreground"
+                    role="status"
+                    aria-label={`Product for ${appointment.customerName}`}
+                  >
+                    {formatMoney(appointment.productAmountMinor, report.currency)}
                   </p>
                 </div>
               ))}
@@ -353,13 +457,67 @@ export default function PaymentsPage() {
   );
 }
 
+function bucketTotalMinor(bucket: {
+  amountMinor: number;
+  tipAmountMinor: number;
+  productAmountMinor: number;
+}): number {
+  return bucket.amountMinor + bucket.tipAmountMinor + bucket.productAmountMinor;
+}
+
+function formatChartNumber(amountMinor: number): string {
+  return `$${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(
+    amountMinor / 100,
+  )}`;
+}
+
+function StackedSegment({
+  amountMinor,
+  className,
+  label,
+}: {
+  amountMinor: number;
+  className: string;
+  label: string;
+}) {
+  if (amountMinor <= 0) return null;
+  return (
+    <div
+      className={`relative grid place-items-center min-h-4 ${className}`}
+      style={{ flexGrow: amountMinor, flexBasis: 0 }}
+      aria-label={`${label} ${formatChartNumber(amountMinor)}`}
+    >
+      <span className="text-[10px] font-medium tabular-nums leading-none px-0.5">
+        {formatChartNumber(amountMinor)}
+      </span>
+    </div>
+  );
+}
+
+function CompletedBookedValue({
+  completed,
+  booked,
+}: {
+  completed: string;
+  booked: string;
+}) {
+  return (
+    <>
+      <span className="text-success">{completed}</span>
+      <span> / {booked}</span>
+    </>
+  );
+}
+
 function SummaryCard({
   label,
   value,
+  hint,
   ariaLabel,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
+  hint?: string;
   ariaLabel?: string;
 }) {
   return (
@@ -375,6 +533,12 @@ function SummaryCard({
       >
         {value}
       </p>
+      {hint ? (
+        <p className="text-xs mt-1">
+          <span className="text-success">completed</span>
+          {" / booked"}
+        </p>
+      ) : null}
     </div>
   );
 }

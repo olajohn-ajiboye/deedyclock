@@ -190,6 +190,11 @@ export default function CustomerProfilePage() {
                             tips {formatMoney(visit.tipAmountMinor, report.currency)}
                           </p>
                         ) : null}
+                        {visit.productAmountMinor > 0 ? (
+                          <p className="text-sm text-muted-foreground tabular-nums">
+                            product {formatMoney(visit.productAmountMinor, report.currency)}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     <AppointmentImages

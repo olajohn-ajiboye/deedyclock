@@ -65,7 +65,7 @@ describe("CustomerProfilePage", () => {
       },
     ]);
     vi.mocked(syncAppointmentPaymentCopies).mockResolvedValue({
-      b1: { paidAmountMinor: 10_000, tipAmountMinor: 2_000 },
+      b1: { paidAmountMinor: 10_000, tipAmountMinor: 2_000, productAmountMinor: 0 },
     });
   });
 

@@ -42,6 +42,7 @@ function SessionRow({
   appointment,
   paidAmountMinor,
   tipAmountMinor,
+  productAmountMinor,
   now,
   striped,
   onEditSession,
@@ -53,6 +54,7 @@ function SessionRow({
   appointment: SquarePaymentRecord | undefined;
   paidAmountMinor: number | null;
   tipAmountMinor: number | null;
+  productAmountMinor: number | null;
   now: number;
   striped: boolean;
   onEditSession: (sessionId: string) => void;
@@ -115,8 +117,11 @@ function SessionRow({
       </div>
 
       <div className="flex items-end justify-between gap-3 min-w-0">
-        {appointment && paidAmountMinor !== null && tipAmountMinor !== null ? (
-          <div className="grid grid-cols-2 gap-2 w-[9.5rem] shrink-0">
+        {appointment &&
+        paidAmountMinor !== null &&
+        tipAmountMinor !== null &&
+        productAmountMinor !== null ? (
+          <div className="grid grid-cols-3 gap-2 w-[14.5rem] shrink-0">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
                 Cost
@@ -143,6 +148,21 @@ function SessionRow({
                 onCommit={(amountMinor) =>
                   void onCommitEdit(appointment.id, appointment.amountMinor, {
                     tipAmountMinor: amountMinor,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                Product
+              </p>
+              <MoneyInput
+                valueMinor={productAmountMinor}
+                ariaLabel={`Product for ${name}`}
+                className="h-9 px-2 text-right tabular-nums text-sm"
+                onCommit={(amountMinor) =>
+                  void onCommitEdit(appointment.id, appointment.amountMinor, {
+                    productAmountMinor: amountMinor,
                   })
                 }
               />
@@ -216,12 +236,13 @@ export function TodaysSessions({
     const current = edits[bookingId] ?? {
       paidAmountMinor: catalogAmountMinor,
       tipAmountMinor: 0,
+      productAmountMinor: 0,
     };
     const next = { ...current, ...patch };
     setEdits((existing) => ({ ...existing, [bookingId]: next }));
     setSaveError(null);
     try {
-      await saveAppointmentPayment(bookingId, next.paidAmountMinor, next.tipAmountMinor);
+      await saveAppointmentPayment(bookingId, next);
     } catch (commitError) {
       setSaveError(
         commitError instanceof Error ? commitError.message : "Could not save the paid amount",
@@ -254,6 +275,9 @@ export function TodaysSessions({
           const tipAmountMinor = appointment
             ? (edits[appointment.id]?.tipAmountMinor ?? 0)
             : null;
+          const productAmountMinor = appointment
+            ? (edits[appointment.id]?.productAmountMinor ?? 0)
+            : null;
 
           return (
             <div key={session.id} className={index > 0 ? "border-t border-border" : undefined}>
@@ -264,6 +288,7 @@ export function TodaysSessions({
                 appointment={appointment}
                 paidAmountMinor={paidAmountMinor}
                 tipAmountMinor={tipAmountMinor}
+                productAmountMinor={productAmountMinor}
                 now={now}
                 striped={index % 2 === 1}
                 onEditSession={onEditSession}

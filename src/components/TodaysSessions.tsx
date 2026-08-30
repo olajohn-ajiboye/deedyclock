@@ -7,6 +7,7 @@ import {
   AppointmentImageUploadButtons,
   useAppointmentImages,
 } from "@/components/AppointmentImages";
+import { CustomerNoteField } from "@/components/CustomerNoteField";
 import { MoneyInput } from "@/components/MoneyInput";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,25 +30,31 @@ interface TodaysSessionsProps {
   sessions: Session[];
   customers: Customer[];
   now: number;
+  day: Date;
+  title?: string;
   onEditSession: (sessionId: string) => void;
 }
 
 function SessionRow({
   session,
+  customer,
   name,
   appointment,
   paidAmountMinor,
   tipAmountMinor,
   now,
+  striped,
   onEditSession,
   onCommitEdit,
 }: {
   session: Session;
+  customer: Customer | null;
   name: string;
   appointment: SquarePaymentRecord | undefined;
   paidAmountMinor: number | null;
   tipAmountMinor: number | null;
   now: number;
+  striped: boolean;
   onEditSession: (sessionId: string) => void;
   onCommitEdit: (
     bookingId: string,
@@ -62,7 +69,11 @@ function SessionRow({
     <div
       className={cn(
         "p-4 sm:p-5 space-y-3",
-        session.endAt === null && "bg-success/5",
+        session.endAt === null
+          ? "bg-success/5"
+          : striped
+            ? "bg-primary/[0.06]"
+            : "bg-card",
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -103,47 +114,50 @@ function SessionRow({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-        <div className="grid grid-cols-2 gap-2 sm:max-w-xs sm:flex-1">
-          {appointment && paidAmountMinor !== null && tipAmountMinor !== null ? (
-            <>
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                  Paid
-                </p>
-                <MoneyInput
-                  valueMinor={paidAmountMinor}
-                  ariaLabel={`Paid for ${name}`}
-                  onCommit={(amountMinor) =>
-                    void onCommitEdit(appointment.id, appointment.amountMinor, {
-                      paidAmountMinor: amountMinor,
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                  Tip
-                </p>
-                <MoneyInput
-                  valueMinor={tipAmountMinor}
-                  ariaLabel={`Tip for ${name}`}
-                  onCommit={(amountMinor) =>
-                    void onCommitEdit(appointment.id, appointment.amountMinor, {
-                      tipAmountMinor: amountMinor,
-                    })
-                  }
-                />
-              </div>
-            </>
-          ) : (
-            <p className="col-span-2 text-sm text-muted-foreground">
-              No booked appointment to price
-            </p>
-          )}
-        </div>
-        <AppointmentImageGallery customerName={name} className="sm:ml-auto" {...photos} />
+      <div className="flex items-end justify-between gap-3 min-w-0">
+        {appointment && paidAmountMinor !== null && tipAmountMinor !== null ? (
+          <div className="grid grid-cols-2 gap-2 w-[9.5rem] shrink-0">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                Cost
+              </p>
+              <MoneyInput
+                valueMinor={paidAmountMinor}
+                ariaLabel={`Cost for ${name}`}
+                className="h-9 px-2 text-right tabular-nums text-sm"
+                onCommit={(amountMinor) =>
+                  void onCommitEdit(appointment.id, appointment.amountMinor, {
+                    paidAmountMinor: amountMinor,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                Tip
+              </p>
+              <MoneyInput
+                valueMinor={tipAmountMinor}
+                ariaLabel={`Tip for ${name}`}
+                className="h-9 px-2 text-right tabular-nums text-sm"
+                onCommit={(amountMinor) =>
+                  void onCommitEdit(appointment.id, appointment.amountMinor, {
+                    tipAmountMinor: amountMinor,
+                  })
+                }
+              />
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground shrink-0">No booked appointment to price</p>
+        )}
+        {customer ? (
+          <div className="shrink-0 ml-auto">
+            <CustomerNoteField customer={customer} compact />
+          </div>
+        ) : null}
       </div>
+      <AppointmentImageGallery customerName={name} {...photos} />
     </div>
   );
 }
@@ -152,6 +166,8 @@ export function TodaysSessions({
   sessions,
   customers,
   now,
+  day,
+  title = "Today's sessions",
   onEditSession,
 }: TodaysSessionsProps) {
   const customersRef = useRef(customers);
@@ -159,7 +175,7 @@ export function TodaysSessions({
   const [appointments, setAppointments] = useState<SquarePaymentRecord[]>([]);
   const [edits, setEdits] = useState<Record<string, AppointmentPaymentEdit>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
-  const range = useMemo(() => getPaymentRange("day", new Date()), []);
+  const range = useMemo(() => getPaymentRange("day", day), [day]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -216,7 +232,7 @@ export function TodaysSessions({
   return (
     <section>
       <div className="flex items-baseline gap-3 mb-4">
-        <h3 className="font-display text-2xl font-semibold">Today's sessions</h3>
+        <h3 className="font-display text-2xl font-semibold">{title}</h3>
         <span className="text-sm text-muted-foreground">
           {sessions.length} {sessions.length === 1 ? "entry" : "entries"}
         </span>
@@ -224,11 +240,11 @@ export function TodaysSessions({
       {saveError ? <p className="mb-3 text-sm text-destructive">{saveError}</p> : null}
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
         {sessions.length === 0 && (
-          <div className="p-10 text-center text-muted-foreground">No sessions yet today.</div>
+          <div className="p-10 text-center text-muted-foreground">No sessions for this day.</div>
         )}
         {sessions.map((session, index) => {
           const customer = session.customerSquareId
-            ? customers.find((item) => item.squareId === session.customerSquareId)
+            ? customers.find((item) => item.squareId === session.customerSquareId) ?? null
             : null;
           const name = customer?.name ?? session.customerName;
           const appointment = appointmentBySessionId.get(session.id);
@@ -243,11 +259,13 @@ export function TodaysSessions({
             <div key={session.id} className={index > 0 ? "border-t border-border" : undefined}>
               <SessionRow
                 session={session}
+                customer={customer}
                 name={name}
                 appointment={appointment}
                 paidAmountMinor={paidAmountMinor}
                 tipAmountMinor={tipAmountMinor}
                 now={now}
+                striped={index % 2 === 1}
                 onEditSession={onEditSession}
                 onCommitEdit={commitEdit}
               />

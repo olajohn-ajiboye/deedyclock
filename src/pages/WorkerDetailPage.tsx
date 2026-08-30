@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Square } from "lucide-react";
+import { addDays, format, isSameDay, startOfDay } from "date-fns";
+import { ArrowLeft, ChevronLeft, ChevronRight, Square } from "lucide-react";
 import { useStore, useNow, store } from "@/lib/store";
 import { AvatarTile } from "@/components/AvatarTile";
 import { EditSessionDrawer } from "@/components/EditSessionDrawer";
@@ -15,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
+const MAX_DAYS_BACK = 7;
+
 export default function WorkerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -28,6 +31,15 @@ export default function WorkerDetailPage() {
     .sort((a, b) => b.startAt - a.startAt);
   const now = useNow();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [dayOffset, setDayOffset] = useState(0);
+
+  const selectedDay = useMemo(() => {
+    const day = startOfDay(new Date());
+    return addDays(day, -dayOffset);
+  }, [dayOffset]);
+  const isToday = dayOffset === 0;
+  const selectedDayStart = selectedDay.getTime();
+  const selectedDayEnd = addDays(selectedDay, 1).getTime();
 
   if (!worker) {
     return (
@@ -43,11 +55,7 @@ export default function WorkerDetailPage() {
   const active = sessions.find((s) => s.endAt === null);
   const activeCustomerName = active?.customerName ?? null;
 
-  const todayStart = (() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
-  })();
+  const todayStart = startOfDay(new Date()).getTime();
   const { start: weekStart } = weekRange(new Date());
 
   const todayMs = sessions
@@ -57,7 +65,15 @@ export default function WorkerDetailPage() {
     .filter((s) => s.startAt >= weekStart.getTime())
     .reduce((acc, s) => acc + durationMs(s, now), 0);
 
-  const todaySessions = sessions.filter((s) => s.startAt >= todayStart);
+  const daySessions = sessions.filter(
+    (s) => s.startAt >= selectedDayStart && s.startAt < selectedDayEnd,
+  );
+
+  const sessionsTitle = isToday
+    ? "Today's sessions"
+    : isSameDay(selectedDay, addDays(startOfDay(new Date()), -1))
+      ? "Yesterday's sessions"
+      : `Sessions · ${format(selectedDay, "EEE, MMM d")}`;
 
   function handleStart(customer: { id: string; squareId?: string; name: string }) {
     if (active) {
@@ -159,14 +175,44 @@ export default function WorkerDetailPage() {
         </section>
       )}
 
-      {!active && <TodaysClients customers={customers} onStart={handleStart} />}
+      {!active && isToday && <TodaysClients customers={customers} onStart={handleStart} />}
 
-      <TodaysSessions
-        sessions={todaySessions}
-        customers={allCustomers}
-        now={now}
-        onEditSession={setEditingId}
-      />
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 rounded-xl"
+            disabled={dayOffset >= MAX_DAYS_BACK}
+            onClick={() => setDayOffset((value) => Math.min(MAX_DAYS_BACK, value + 1))}
+            aria-label="Previous day"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <p className="min-w-40 text-center font-medium">
+            {isToday ? "Today" : format(selectedDay, "EEE, MMM d")}
+          </p>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 rounded-xl"
+            disabled={isToday}
+            onClick={() => setDayOffset((value) => Math.max(0, value - 1))}
+            aria-label="Next day"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <TodaysSessions
+          sessions={daySessions}
+          customers={allCustomers}
+          now={now}
+          day={selectedDay}
+          title={sessionsTitle}
+          onEditSession={setEditingId}
+        />
+      </div>
 
       <EditSessionDrawer
         sessionId={editingId}

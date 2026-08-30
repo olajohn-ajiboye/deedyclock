@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil } from "lucide-react";
+import { MessageSquare, MessageSquarePlus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { visibleCustomerNote } from "@/lib/customerNotes";
@@ -60,14 +60,27 @@ export function CustomerNoteField({
       type="button"
       variant="ghost"
       size="icon"
-      className={cn("h-9 w-9 shrink-0 rounded-xl", showTitle && "h-10 w-10")}
+      className={cn(
+        "h-9 w-9 shrink-0 rounded-xl",
+        showTitle && "h-10 w-10",
+        compact && visible && "text-primary",
+      )}
       aria-label={`Edit notes for ${customer.name}`}
+      title={visible ? "View notes" : "Add a note"}
       onClick={() => {
         setDraft(visible);
         setEditing(true);
       }}
     >
-      <Pencil className="h-4 w-4" />
+      {compact ? (
+        visible ? (
+          <MessageSquare className="h-4 w-4 fill-current" />
+        ) : (
+          <MessageSquarePlus className="h-4 w-4" />
+        )
+      ) : (
+        <Pencil className="h-4 w-4" />
+      )}
     </Button>
   );
 
@@ -108,12 +121,32 @@ export function CustomerNoteField({
             disabled={saving}
             aria-label={`Notes for ${customer.name}`}
             placeholder="Add a note"
-            className="min-h-[4.5rem] min-w-[12rem] rounded-xl resize-y"
+            className="min-h-[4.5rem] w-[min(100%,16rem)] rounded-xl resize-y"
             onChange={(event) => setDraft(event.target.value)}
             onBlur={() => void save()}
           />
         ) : (
-          editButton
+          <button
+            type="button"
+            className="flex items-center gap-1.5 max-w-[8.5rem] text-left rounded-xl hover:bg-muted/60 px-1 py-0.5"
+            aria-label={`Edit notes for ${customer.name}`}
+            title={visible || "Add a note"}
+            onClick={() => {
+              setDraft(visible);
+              setEditing(true);
+            }}
+          >
+            {visible ? (
+              <>
+                <MessageSquare className="h-4 w-4 shrink-0 text-primary fill-current" />
+                <span className="min-w-0 truncate text-xs text-muted-foreground">
+                  {visible}
+                </span>
+              </>
+            ) : (
+              <MessageSquarePlus className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
+          </button>
         )
       ) : editing ? (
         <Textarea

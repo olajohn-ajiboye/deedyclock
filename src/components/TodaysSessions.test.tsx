@@ -18,6 +18,10 @@ vi.mock("@/lib/appointmentPayments", () => ({
   syncAppointmentPaymentCopies: vi.fn(),
 }));
 
+vi.mock("@/lib/squareSync", () => ({
+  updateCustomerNoteOnSquare: vi.fn(),
+}));
+
 vi.mock("@/lib/appointmentImages", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/appointmentImages")>();
   return {
@@ -62,31 +66,38 @@ describe("TodaysSessions", () => {
     vi.mocked(saveAppointmentPayment).mockResolvedValue(undefined);
   });
 
-  it("lets the user edit paid and tip without starting a session", async () => {
+  it("lets the user edit cost and tip without starting a session", async () => {
     render(
       <MemoryRouter>
-      <TodaysSessions
-        sessions={[session]}
-        customers={[
-          {
-            id: "local-1",
-            squareId: "c1",
-            name: "Ada",
-            color: "220 70% 50%",
-          },
-        ]}
-        now={Date.now()}
-        onEditSession={onEditSession}
-      />
+        <TodaysSessions
+          sessions={[session]}
+          customers={[
+            {
+              id: "local-1",
+              squareId: "c1",
+              name: "Ada",
+              color: "220 70% 50%",
+              note: "Prefers silk press",
+              squareVersion: 2,
+            },
+          ]}
+          now={Date.now()}
+          day={new Date()}
+          onEditSession={onEditSession}
+        />
       </MemoryRouter>,
     );
 
-    const paid = await screen.findByLabelText("Paid for Ada");
+    const cost = await screen.findByLabelText("Cost for Ada");
     const tip = screen.getByLabelText("Tip for Ada");
+    expect(screen.getByText("Cost")).toBeInTheDocument();
+    expect(screen.getByText("Tip")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit notes for Ada" })).toBeInTheDocument();
+    expect(screen.queryByText(/Paid for/i)).not.toBeInTheDocument();
 
-    fireEvent.click(paid);
-    fireEvent.change(paid, { target: { value: "100" } });
-    fireEvent.blur(paid);
+    fireEvent.click(cost);
+    fireEvent.change(cost, { target: { value: "100" } });
+    fireEvent.blur(cost);
     fireEvent.change(tip, { target: { value: "20" } });
     fireEvent.blur(tip);
 

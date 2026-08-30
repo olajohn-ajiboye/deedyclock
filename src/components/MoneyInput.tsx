@@ -6,10 +6,12 @@ export function MoneyInput({
   valueMinor,
   ariaLabel,
   onCommit,
+  className,
 }: {
   valueMinor: number;
   ariaLabel: string;
   onCommit: (amountMinor: number) => void;
+  className?: string;
 }) {
   const [draft, setDraft] = useState(minorToDollarInput(valueMinor));
 
@@ -19,19 +21,16 @@ export function MoneyInput({
 
   return (
     <label
-      className="block"
+      className="block min-w-0"
       onClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
     >
-      <span className="sm:sr-only text-xs uppercase tracking-wider text-muted-foreground">
-        {ariaLabel}
-      </span>
       <Input
         type="number"
         min={0}
         step="any"
         inputMode="decimal"
-        className="h-10 text-right tabular-nums"
+        className={className ?? "h-10 text-right tabular-nums"}
         aria-label={ariaLabel}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}

@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Search } from "lucide-react";
 import { customerProfilePath } from "@/lib/customerHistory";
 import { AvatarTile } from "@/components/AvatarTile";
-import { CustomerNoteField } from "@/components/CustomerNoteField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTodayBookings } from "@/lib/squareBookings";
@@ -70,7 +69,6 @@ export function TodaysClients({ customers, onStart }: TodaysClientsProps) {
               <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Client</th>
                 <th className="px-4 py-3 font-medium text-right">Action</th>
-                <th className="px-4 py-3 font-medium">Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -120,9 +118,6 @@ export function TodaysClients({ customers, onStart }: TodaysClientsProps) {
                     >
                       Start
                     </Button>
-                  </td>
-                  <td className="px-2 py-3 w-12">
-                    <CustomerNoteField customer={customer} compact />
                   </td>
                 </tr>
               ))}

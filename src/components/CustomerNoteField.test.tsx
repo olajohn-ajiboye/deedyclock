@@ -57,4 +57,20 @@ describe("CustomerNoteField", () => {
       });
     });
   });
+
+  it("shows a short preview beside the note icon when a note already exists", () => {
+    render(
+      <CustomerNoteField
+        compact
+        customer={{
+          ...ada,
+          note: "Prefers silk press and warm water rinse",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Edit notes for Ada" })).toHaveTextContent(
+      /Prefers silk press/,
+    );
+  });
 });

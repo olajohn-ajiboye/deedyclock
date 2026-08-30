@@ -27,33 +27,29 @@ describe("TodaysClients", () => {
     });
   });
 
-  it("starts a session from the client row and does not show paid editors", async () => {
+  it("starts a session from the client row without a notes column", async () => {
     render(
       <MemoryRouter>
-      <TodaysClients
-        customers={[
-          {
-            id: "local-1",
-            squareId: "c1",
-            name: "Ada",
-            color: "220 70% 50%",
-            phone: "555-0100",
-          },
-        ]}
-        onStart={onStart}
-      />
+        <TodaysClients
+          customers={[
+            {
+              id: "local-1",
+              squareId: "c1",
+              name: "Ada",
+              color: "220 70% 50%",
+              phone: "555-0100",
+            },
+          ]}
+          onStart={onStart}
+        />
       </MemoryRouter>,
     );
 
     expect(await screen.findByText("Ada")).toBeInTheDocument();
     expect(screen.queryByLabelText("Paid for Ada")).not.toBeInTheDocument();
     const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
-    expect(headers).toEqual(["Client", "Action", "Notes"]);
-    expect(screen.getByRole("button", { name: "Edit notes for Ada" })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Notes for Ada")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Edit notes for Ada" }));
-    expect(onStart).not.toHaveBeenCalled();
+    expect(headers).toEqual(["Client", "Action"]);
+    expect(screen.queryByRole("button", { name: "Edit notes for Ada" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
 

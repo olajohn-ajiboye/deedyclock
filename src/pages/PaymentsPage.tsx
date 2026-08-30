@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AvatarTile } from "@/components/AvatarTile";
+import { CashCollectedSection } from "@/components/CashCollectedSection";
 import { customerProfilePath } from "@/lib/customerHistory";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
@@ -363,6 +364,8 @@ export default function PaymentsPage() {
         </div>
       </section>
 
+      <CashCollectedSection />
+
       <section className="rounded-3xl bg-card border border-border shadow-[var(--shadow-card)] overflow-hidden">
         <div className="p-5 sm:p-6 border-b border-border">
           <h3 className="font-display text-2xl font-semibold">Appointments</h3>
@@ -527,7 +530,7 @@ function SummaryCard({
     >
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p
-        className="font-display text-3xl font-semibold mt-1 tabular-nums"
+        className="font-display text-xl font-semibold mt-1 tabular-nums"
         role={ariaLabel ? "status" : undefined}
         aria-label={ariaLabel}
       >

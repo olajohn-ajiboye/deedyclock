@@ -87,6 +87,30 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_cash_collections: {
+        Row: {
+          cash_amount_minor: number
+          collected_on: string
+          created_at: string
+          loctician_payout_minor: number
+          updated_at: string
+        }
+        Insert: {
+          cash_amount_minor?: number
+          collected_on: string
+          created_at?: string
+          loctician_payout_minor?: number
+          updated_at?: string
+        }
+        Update: {
+          cash_amount_minor?: number
+          collected_on?: string
+          created_at?: string
+          loctician_payout_minor?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       appointment_images: {
         Row: {
           appointment_key: string

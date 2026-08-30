@@ -15,6 +15,11 @@ vi.mock("@/lib/appointmentPayments", () => ({
   syncAppointmentPaymentCopies: vi.fn(),
 }));
 
+vi.mock("@/lib/cashCollections", () => ({
+  fetchDailyCash: vi.fn().mockResolvedValue({}),
+  saveDailyCash: vi.fn(),
+}));
+
 vi.mock("@/lib/store", () => ({
   useStore: (
     selector: (state: { customers: unknown[]; sessions: unknown[] }) => unknown,
@@ -76,14 +81,13 @@ describe("PaymentsPage", () => {
     );
 
     expect(await screen.findByText("Ada")).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Date" })).toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader", { name: "Date" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("columnheader", { name: "Customer" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Photos" })).not.toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Cost" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Tip" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Product" })).toBeInTheDocument();
     expect(screen.getByText("Retwist")).toBeInTheDocument();
-    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Cost for Ada")).toHaveTextContent(/100/);
     expect(screen.getByLabelText("Tip for Ada")).toHaveTextContent(/20/);
     expect(screen.getByLabelText("Product for Ada")).toHaveTextContent(/15/);
@@ -147,10 +151,10 @@ describe("PaymentsPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("button", { name: "Year" })).toBeInTheDocument();
+    expect((await screen.findAllByRole("button", { name: "Year" })).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "All history" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Year" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Year" })[0]);
 
     expect(await screen.findByText(format(new Date(), "yyyy"))).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Next year" }));

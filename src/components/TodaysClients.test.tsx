@@ -48,7 +48,7 @@ describe("TodaysClients", () => {
     expect(await screen.findByText("Ada")).toBeInTheDocument();
     expect(screen.queryByLabelText("Paid for Ada")).not.toBeInTheDocument();
     const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
-    expect(headers).toEqual(["Client", "Phone", "Action", "Notes"]);
+    expect(headers).toEqual(["Client", "Action", "Notes"]);
     expect(screen.getByRole("button", { name: "Edit notes for Ada" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Notes for Ada")).not.toBeInTheDocument();
 

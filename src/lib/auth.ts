@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { lockPayments } from "@/lib/paymentPin";
 
 interface AuthState {
   user: User | null;
@@ -30,6 +29,5 @@ export function useAuth(): AuthState {
 }
 
 export async function signOut() {
-  lockPayments();
   await supabase.auth.signOut();
 }

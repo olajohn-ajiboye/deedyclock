@@ -6,8 +6,17 @@ import { visibleCustomerNote } from "@/lib/customerNotes";
 import { updateCustomerNoteOnSquare } from "@/lib/squareSync";
 import type { Customer } from "@/lib/types";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-export function CustomerNoteField({ customer }: { customer: Customer }) {
+export function CustomerNoteField({
+  customer,
+  showTitle = false,
+  compact = false,
+}: {
+  customer: Customer;
+  showTitle?: boolean;
+  compact?: boolean;
+}) {
   const visible = visibleCustomerNote(customer.note);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(visible);
@@ -46,13 +55,67 @@ export function CustomerNoteField({ customer }: { customer: Customer }) {
     }
   };
 
+  const editButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className={cn("h-9 w-9 shrink-0 rounded-xl", showTitle && "h-10 w-10")}
+      aria-label={`Edit notes for ${customer.name}`}
+      onClick={() => {
+        setDraft(visible);
+        setEditing(true);
+      }}
+    >
+      <Pencil className="h-4 w-4" />
+    </Button>
+  );
+
   return (
     <div
       className="min-w-0"
       onClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
     >
-      {editing ? (
+      {showTitle ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-display text-2xl font-semibold">Notes</h3>
+            {!editing ? editButton : null}
+          </div>
+          {editing ? (
+            <Textarea
+              autoFocus
+              value={draft}
+              disabled={saving}
+              aria-label={`Notes for ${customer.name}`}
+              placeholder="Add a note"
+              className="min-h-[4.5rem] rounded-xl resize-y"
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={() => void save()}
+            />
+          ) : visible ? (
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{visible}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No notes yet.</p>
+          )}
+        </div>
+      ) : compact ? (
+        editing ? (
+          <Textarea
+            autoFocus
+            value={draft}
+            disabled={saving}
+            aria-label={`Notes for ${customer.name}`}
+            placeholder="Add a note"
+            className="min-h-[4.5rem] min-w-[12rem] rounded-xl resize-y"
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={() => void save()}
+          />
+        ) : (
+          editButton
+        )
+      ) : editing ? (
         <Textarea
           autoFocus
           value={draft}
@@ -64,25 +127,13 @@ export function CustomerNoteField({ customer }: { customer: Customer }) {
           onBlur={() => void save()}
         />
       ) : (
-        <div className="flex items-start gap-1">
+        <div className="flex items-center gap-1">
           {visible ? (
             <p className="flex-1 min-w-0 text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap">
               {visible}
             </p>
           ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 rounded-xl"
-            aria-label={`Edit notes for ${customer.name}`}
-            onClick={() => {
-              setDraft(visible);
-              setEditing(true);
-            }}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          {editButton}
         </div>
       )}
     </div>

@@ -79,6 +79,7 @@ describe("CustomerProfilePage", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Ada" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Notes" })).toBeInTheDocument();
     expect(screen.getByText("Prefers silk press")).toBeInTheDocument();
     expect(screen.getByText("Retwist")).toBeInTheDocument();
     expect(screen.queryByText("Trim")).not.toBeInTheDocument();

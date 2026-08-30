@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Pencil } from "lucide-react";
 import { customerProfilePath } from "@/lib/customerHistory";
-import { AppointmentImages } from "@/components/AppointmentImages";
-import { AvatarTile } from "@/components/AvatarTile";
+import {
+  AppointmentImageGallery,
+  AppointmentImageUploadButtons,
+  useAppointmentImages,
+} from "@/components/AppointmentImages";
 import { MoneyInput } from "@/components/MoneyInput";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +30,122 @@ interface TodaysSessionsProps {
   customers: Customer[];
   now: number;
   onEditSession: (sessionId: string) => void;
+}
+
+function SessionRow({
+  session,
+  name,
+  appointment,
+  paidAmountMinor,
+  tipAmountMinor,
+  now,
+  onEditSession,
+  onCommitEdit,
+}: {
+  session: Session;
+  name: string;
+  appointment: SquarePaymentRecord | undefined;
+  paidAmountMinor: number | null;
+  tipAmountMinor: number | null;
+  now: number;
+  onEditSession: (sessionId: string) => void;
+  onCommitEdit: (
+    bookingId: string,
+    catalogAmountMinor: number,
+    patch: Partial<AppointmentPaymentEdit>,
+  ) => void;
+}) {
+  const appointmentKey = imageKeyForAppointment(session.id, appointment?.id);
+  const photos = useAppointmentImages(appointmentKey);
+
+  return (
+    <div
+      className={cn(
+        "p-4 sm:p-5 space-y-3",
+        session.endAt === null && "bg-success/5",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {session.customerSquareId ? (
+            <Link
+              to={customerProfilePath(session.customerSquareId)}
+              className="font-bold truncate hover:underline"
+            >
+              {name}
+            </Link>
+          ) : (
+            <p className="font-bold truncate">{name}</p>
+          )}
+          <AppointmentImageUploadButtons customerName={name} {...photos} />
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="flex items-center justify-end gap-1">
+            <p className="font-display text-lg sm:text-xl font-semibold tabular-nums">
+              {formatDuration(durationMs(session, now))}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEditSession(session.id)}
+              className="rounded-xl h-10 w-10"
+              aria-label="Edit session"
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground tabular-nums mt-0.5">
+            {fmtTime(session.startAt)} —{" "}
+            {session.endAt ? fmtTime(session.endAt) : (
+              <span className="text-success">in progress</span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+        <div className="grid grid-cols-2 gap-2 sm:max-w-xs sm:flex-1">
+          {appointment && paidAmountMinor !== null && tipAmountMinor !== null ? (
+            <>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                  Paid
+                </p>
+                <MoneyInput
+                  valueMinor={paidAmountMinor}
+                  ariaLabel={`Paid for ${name}`}
+                  onCommit={(amountMinor) =>
+                    void onCommitEdit(appointment.id, appointment.amountMinor, {
+                      paidAmountMinor: amountMinor,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                  Tip
+                </p>
+                <MoneyInput
+                  valueMinor={tipAmountMinor}
+                  ariaLabel={`Tip for ${name}`}
+                  onCommit={(amountMinor) =>
+                    void onCommitEdit(appointment.id, appointment.amountMinor, {
+                      tipAmountMinor: amountMinor,
+                    })
+                  }
+                />
+              </div>
+            </>
+          ) : (
+            <p className="col-span-2 text-sm text-muted-foreground">
+              No booked appointment to price
+            </p>
+          )}
+        </div>
+        <AppointmentImageGallery customerName={name} className="sm:ml-auto" {...photos} />
+      </div>
+    </div>
+  );
 }
 
 export function TodaysSessions({
@@ -112,7 +231,6 @@ export function TodaysSessions({
             ? customers.find((item) => item.squareId === session.customerSquareId)
             : null;
           const name = customer?.name ?? session.customerName;
-          const color = customer?.color ?? "0 0% 50%";
           const appointment = appointmentBySessionId.get(session.id);
           const paidAmountMinor = appointment
             ? (edits[appointment.id]?.paidAmountMinor ?? appointment.amountMinor)
@@ -122,89 +240,17 @@ export function TodaysSessions({
             : null;
 
           return (
-            <div
-              key={session.id}
-              className={cn(
-                "flex flex-col gap-3 p-4 sm:p-5 sm:flex-row sm:items-center",
-                index > 0 && "border-t border-border",
-                session.endAt === null && "bg-success/5",
-              )}
-            >
-              <AvatarTile name={name} color={color} size="md" />
-              <div className="flex-1 min-w-0">
-                {session.customerSquareId ? (
-                  <Link
-                    to={customerProfilePath(session.customerSquareId)}
-                    className="font-medium truncate block hover:underline"
-                  >
-                    {name}
-                  </Link>
-                ) : (
-                  <p className="font-medium truncate">{name}</p>
-                )}
-                <p className="text-sm text-muted-foreground tabular-nums">
-                  {fmtTime(session.startAt)} —{" "}
-                  {session.endAt ? fmtTime(session.endAt) : (
-                    <span className="text-success">in progress</span>
-                  )}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:w-56">
-                {appointment && paidAmountMinor !== null && tipAmountMinor !== null ? (
-                  <>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                        Paid
-                      </p>
-                      <MoneyInput
-                        valueMinor={paidAmountMinor}
-                        ariaLabel={`Paid for ${name}`}
-                        onCommit={(amountMinor) =>
-                          void commitEdit(appointment.id, appointment.amountMinor, {
-                            paidAmountMinor: amountMinor,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                        Tip
-                      </p>
-                      <MoneyInput
-                        valueMinor={tipAmountMinor}
-                        ariaLabel={`Tip for ${name}`}
-                        onCommit={(amountMinor) =>
-                          void commitEdit(appointment.id, appointment.amountMinor, {
-                            tipAmountMinor: amountMinor,
-                          })
-                        }
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <p className="col-span-2 text-sm text-muted-foreground">
-                    No booked appointment to price
-                  </p>
-                )}
-              </div>
-              <AppointmentImages
-                appointmentKey={imageKeyForAppointment(session.id, appointment?.id)}
-                customerName={name}
+            <div key={session.id} className={index > 0 ? "border-t border-border" : undefined}>
+              <SessionRow
+                session={session}
+                name={name}
+                appointment={appointment}
+                paidAmountMinor={paidAmountMinor}
+                tipAmountMinor={tipAmountMinor}
+                now={now}
+                onEditSession={onEditSession}
+                onCommitEdit={commitEdit}
               />
-              <div className="text-right sm:min-w-16">
-                <p className="font-display text-xl font-semibold tabular-nums">
-                  {formatDuration(durationMs(session, now))}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onEditSession(session.id)}
-                className="rounded-xl h-12 w-12"
-                aria-label="Edit session"
-              >
-                <Pencil className="w-5 h-5" />
-              </Button>
             </div>
           );
         })}

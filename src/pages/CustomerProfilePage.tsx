@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { format } from "date-fns";
-import { ArrowLeft, CalendarRange, Mail, Phone } from "lucide-react";
+import { ArrowLeft, CalendarRange } from "lucide-react";
 import { AppointmentImages } from "@/components/AppointmentImages";
-import { AvatarTile } from "@/components/AvatarTile";
 import { CustomerNoteField } from "@/components/CustomerNoteField";
 import { useStore } from "@/lib/store";
 import { appointmentsForCustomer } from "@/lib/customerHistory";
@@ -108,38 +107,25 @@ export default function CustomerProfilePage() {
               "radial-gradient(70% 90% at 90% 10%, hsl(var(--accent) / 0.55), transparent 55%)",
           }}
         />
-        <div className="relative flex flex-col sm:flex-row sm:items-end gap-6">
-          <AvatarTile name={customer.name} color={customer.color} size="xl" />
-          <div className="min-w-0 flex-1">
-            <p className="uppercase tracking-[0.22em] text-xs opacity-80">Client record</p>
-            <h2 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight mt-1">
+        <div className="relative space-y-5">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="font-display text-2xl sm:text-4xl font-semibold tracking-tight leading-tight min-w-0 truncate">
               {customer.name}
             </h2>
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm opacity-90">
-              {customer.phone ? (
-                <span className="inline-flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5" />
-                  {customer.phone}
-                </span>
-              ) : null}
-              {customer.email ? (
-                <span className="inline-flex items-center gap-2 min-w-0">
-                  <Mail className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{customer.email}</span>
-                </span>
-              ) : null}
-            </div>
+            <p className="text-sm sm:text-base opacity-90 tabular-nums shrink-0">
+              {customer.phone ?? "—"}
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:text-right">
+          <div className="flex items-baseline justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] opacity-75">Visits</p>
-              <p className="font-display text-3xl font-semibold tabular-nums">
+              <p className="font-display text-2xl sm:text-3xl font-semibold tabular-nums">
                 {loading ? "—" : report.paymentCount}
               </p>
             </div>
-            <div>
+            <div className="text-right">
               <p className="text-xs uppercase tracking-[0.18em] opacity-75">Paid</p>
-              <p className="font-display text-3xl font-semibold tabular-nums">
+              <p className="font-display text-2xl sm:text-3xl font-semibold tabular-nums">
                 {loading ? "—" : formatMoney(report.totalPaidMinor, report.currency)}
               </p>
             </div>
@@ -148,9 +134,7 @@ export default function CustomerProfilePage() {
       </section>
 
       <section className="rounded-[2rem] bg-card border border-border p-6 sm:p-8 shadow-[var(--shadow-card)]">
-        <p className="uppercase tracking-[0.2em] text-xs text-muted-foreground">Chair notes</p>
-        <h3 className="font-display text-2xl font-semibold mt-1 mb-4">What to remember</h3>
-        <CustomerNoteField customer={customer} />
+        <CustomerNoteField customer={customer} showTitle />
       </section>
 
       <section className="space-y-4">

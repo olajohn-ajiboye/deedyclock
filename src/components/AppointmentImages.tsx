@@ -2,25 +2,27 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   deleteAppointmentImage,
   listAppointmentImages,
   publicUrlForAppointmentImage,
   uploadAppointmentImage,
   type AppointmentImage,
 } from "@/lib/appointmentImages";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-export function AppointmentImages({
-  appointmentKey,
-  customerName,
-}: {
-  appointmentKey: string;
-  customerName: string;
-}) {
+export function useAppointmentImages(appointmentKey: string) {
   const libraryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<AppointmentImage[]>([]);
   const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState<AppointmentImage | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +63,7 @@ export function AppointmentImages({
     try {
       await deleteAppointmentImage(image);
       setImages((current) => current.filter((item) => item.id !== image.id));
+      setExpanded((current) => (current?.id === image.id ? null : current));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete the photo");
     } finally {
@@ -68,28 +71,42 @@ export function AppointmentImages({
     }
   };
 
+  return {
+    images,
+    busy,
+    expanded,
+    setExpanded,
+    libraryInputRef,
+    cameraInputRef,
+    addFiles,
+    remove,
+  };
+}
+
+type AppointmentImagePartsProps = {
+  customerName: string;
+  className?: string;
+  images: AppointmentImage[];
+  busy: boolean;
+  expanded: AppointmentImage | null;
+  setExpanded: (image: AppointmentImage | null) => void;
+  libraryInputRef: React.RefObject<HTMLInputElement | null>;
+  cameraInputRef: React.RefObject<HTMLInputElement | null>;
+  addFiles: (fileList: FileList | null) => Promise<void>;
+  remove: (image: AppointmentImage) => Promise<void>;
+};
+
+function AppointmentImageFileInputs({
+  busy,
+  libraryInputRef,
+  cameraInputRef,
+  addFiles,
+}: Pick<
+  AppointmentImagePartsProps,
+  "busy" | "libraryInputRef" | "cameraInputRef" | "addFiles"
+>) {
   return (
-    <div className="flex items-center gap-2 min-w-0">
-      <div className="flex gap-1 overflow-x-auto">
-        {images.map((image) => (
-          <div key={image.id} className="relative h-12 w-12 shrink-0">
-            <img
-              src={publicUrlForAppointmentImage(image.storagePath)}
-              alt={`Photo for ${customerName}`}
-              className="h-12 w-12 rounded-lg object-cover border border-border"
-            />
-            <button
-              type="button"
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-background border border-border grid place-items-center"
-              aria-label={`Remove photo for ${customerName}`}
-              disabled={busy}
-              onClick={() => void remove(image)}
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        ))}
-      </div>
+    <>
       <input
         ref={libraryInputRef}
         type="file"
@@ -109,6 +126,29 @@ export function AppointmentImages({
         aria-hidden="true"
         disabled={busy}
         onChange={(event) => void addFiles(event.target.files)}
+      />
+    </>
+  );
+}
+
+export function AppointmentImageUploadButtons({
+  customerName,
+  className,
+  busy,
+  libraryInputRef,
+  cameraInputRef,
+  addFiles,
+}: Pick<
+  AppointmentImagePartsProps,
+  "customerName" | "className" | "busy" | "libraryInputRef" | "cameraInputRef" | "addFiles"
+>) {
+  return (
+    <div className={cn("flex items-center gap-2 shrink-0", className)}>
+      <AppointmentImageFileInputs
+        busy={busy}
+        libraryInputRef={libraryInputRef}
+        cameraInputRef={cameraInputRef}
+        addFiles={addFiles}
       />
       <Button
         type="button"
@@ -132,6 +172,91 @@ export function AppointmentImages({
       >
         <ImagePlus className="h-5 w-5" />
       </Button>
+    </div>
+  );
+}
+
+export function AppointmentImageGallery({
+  customerName,
+  className,
+  images,
+  busy,
+  expanded,
+  setExpanded,
+  remove,
+}: Pick<
+  AppointmentImagePartsProps,
+  "customerName" | "className" | "images" | "busy" | "expanded" | "setExpanded" | "remove"
+>) {
+  if (images.length === 0) return null;
+
+  return (
+    <>
+      <div className={cn("flex gap-1 overflow-x-auto min-w-0", className)}>
+        {images.map((image) => (
+          <div key={image.id} className="relative h-12 w-12 shrink-0">
+            <button
+              type="button"
+              className="block h-12 w-12 rounded-lg overflow-hidden border border-border"
+              aria-label={`View photo for ${customerName}`}
+              onClick={() => setExpanded(image)}
+            >
+              <img
+                src={publicUrlForAppointmentImage(image.storagePath)}
+                alt={`Photo for ${customerName}`}
+                className="h-full w-full object-cover"
+              />
+            </button>
+            <button
+              type="button"
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-background border border-border grid place-items-center"
+              aria-label={`Remove photo for ${customerName}`}
+              disabled={busy}
+              onClick={(event) => {
+                event.stopPropagation();
+                void remove(image);
+              }}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <Dialog open={expanded !== null} onOpenChange={(open) => !open && setExpanded(null)}>
+        <DialogContent className="max-w-[min(100vw-2rem,42rem)] border-0 bg-black/95 p-2 sm:p-3">
+          <DialogTitle className="sr-only">Photo for {customerName}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Expanded appointment photo for {customerName}
+          </DialogDescription>
+          {expanded ? (
+            <img
+              src={publicUrlForAppointmentImage(expanded.storagePath)}
+              alt={`Photo for ${customerName}`}
+              className="mx-auto max-h-[85vh] w-full object-contain rounded-lg"
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function AppointmentImages({
+  appointmentKey,
+  customerName,
+  className,
+}: {
+  appointmentKey: string;
+  customerName: string;
+  className?: string;
+}) {
+  const photos = useAppointmentImages(appointmentKey);
+
+  return (
+    <div className={cn("flex items-center gap-2 min-w-0", className)}>
+      <AppointmentImageGallery customerName={customerName} {...photos} />
+      <AppointmentImageUploadButtons customerName={customerName} {...photos} />
     </div>
   );
 }

@@ -42,4 +42,26 @@ describe("AppointmentImages", () => {
       expect(uploadAppointmentImage).toHaveBeenCalledWith("b1", file);
     });
   });
+
+  it("opens an expanded view when a stored photo is tapped", async () => {
+    vi.mocked(listAppointmentImages).mockResolvedValue([
+      {
+        id: "img1",
+        appointmentKey: "b1",
+        storagePath: "b1/img1.jpg",
+        contentType: "image/jpeg",
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+
+    render(<AppointmentImages appointmentKey="b1" customerName="Ada" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "View photo for Ada" }));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Photo for Ada" })).toHaveAttribute(
+      "src",
+      "https://img.test/b1/img1.jpg",
+    );
+  });
 });

@@ -53,7 +53,7 @@ export function TodaysClients({ customers, onStart }: TodaysClientsProps) {
           />
         </div>
       </div>
-      <div className="rounded-2xl border border-border bg-background max-h-[480px] overflow-x-auto overflow-y-auto">
+      <div className="rounded-2xl border border-border bg-background max-h-[480px] overflow-y-auto">
         {filteredCustomers.length === 0 ? (
           <div className="text-center text-muted-foreground py-10">
             {loading
@@ -65,11 +65,10 @@ export function TodaysClients({ customers, onStart }: TodaysClientsProps) {
                   : "No appointments scheduled for today."}
           </div>
         ) : (
-          <table className="w-full min-w-[40rem]">
+          <table className="w-full">
             <thead className="sticky top-0 bg-muted/60 backdrop-blur">
               <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Client</th>
-                <th className="px-4 py-3 font-medium">Phone</th>
                 <th className="px-4 py-3 font-medium text-right">Action</th>
                 <th className="px-4 py-3 font-medium">Notes</th>
               </tr>
@@ -90,26 +89,23 @@ export function TodaysClients({ customers, onStart }: TodaysClientsProps) {
                     index > 0 && "border-t border-border",
                   )}
                 >
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <AvatarTile name={customer.name} color={customer.color} size="md" />
                       {customer.squareId ? (
                         <Link
                           to={customerProfilePath(customer.squareId)}
                           onClick={(event) => event.stopPropagation()}
-                          className="font-medium hover:underline"
+                          className="font-medium hover:underline truncate"
                         >
                           {customer.name}
                         </Link>
                       ) : (
-                        <span className="font-medium">{customer.name}</span>
+                        <span className="font-medium truncate">{customer.name}</span>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                    {customer.phone ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Button
                       size="sm"
                       onClick={(event) => {
@@ -125,8 +121,8 @@ export function TodaysClients({ customers, onStart }: TodaysClientsProps) {
                       Start
                     </Button>
                   </td>
-                  <td className="px-4 py-3 min-w-48">
-                    <CustomerNoteField customer={customer} />
+                  <td className="px-2 py-3 w-12">
+                    <CustomerNoteField customer={customer} compact />
                   </td>
                 </tr>
               ))}

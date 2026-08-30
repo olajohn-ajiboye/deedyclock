@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { isPaymentsUnlocked, tryUnlockPayments } from "@/lib/paymentPin";
+import { isValidPaymentsPin } from "@/lib/paymentPin";
 
 export function PaymentsPinLock({ children }: { children: React.ReactNode }) {
-  const [unlocked, setUnlocked] = useState(() => isPaymentsUnlocked());
+  const [unlocked, setUnlocked] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pinReady, setPinReady] = useState(false);
 
   if (unlocked) return children;
 
@@ -22,13 +23,14 @@ export function PaymentsPinLock({ children }: { children: React.ReactNode }) {
       <p className="uppercase tracking-[0.2em] text-xs text-muted-foreground">Payments</p>
       <h2 className="font-display text-3xl font-semibold mt-1">Enter PIN</h2>
       <p className="text-sm text-muted-foreground mt-2 mb-6">
-        This page is for salon owners. Unlock stays until you close this tab or sign out.
+        This page is for salon owners. You&apos;ll be asked again each time you open Payments.
       </p>
       <form
+        autoComplete="off"
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
-          if (tryUnlockPayments(pin)) {
+          if (isValidPaymentsPin(pin)) {
             setError(null);
             setUnlocked(true);
             return;
@@ -37,16 +39,26 @@ export function PaymentsPinLock({ children }: { children: React.ReactNode }) {
         }}
       >
         <Input
-          type="password"
+          type="text"
           inputMode="numeric"
-          autoComplete="off"
+          pattern="[0-9]*"
+          name="deedyclock-payments-unlock"
+          autoComplete="one-time-code"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-1p-ignore
+          data-lpignore="true"
+          data-form-type="other"
+          readOnly={!pinReady}
           value={pin}
+          onFocus={() => setPinReady(true)}
           onChange={(event) => {
             setPin(event.target.value);
             setError(null);
           }}
           aria-label="Payments PIN"
-          className="h-12 rounded-xl"
+          className="h-12 rounded-xl [-webkit-text-security:disc]"
         />
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <Button type="submit" className="w-full h-12 rounded-xl">

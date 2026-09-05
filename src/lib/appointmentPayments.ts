@@ -15,6 +15,16 @@ export interface AppointmentPaymentRow {
   product_amount_minor: number;
 }
 
+export interface AppointmentPaymentHistoryRow extends AppointmentPaymentRow {
+  customer_square_id: string | null;
+  start_at: string;
+  catalog_amount_minor: number;
+  currency: string;
+  service_names: string[];
+  unpriced: boolean;
+  note: string;
+}
+
 export interface AppointmentPaymentInsert {
   booking_id: string;
   customer_square_id: string | null;
@@ -27,6 +37,7 @@ export interface AppointmentPaymentInsert {
   currency: string;
   service_names: string[];
   unpriced: boolean;
+  note: string;
 }
 
 const ID_CHUNK = 100;
@@ -73,6 +84,7 @@ export function copiesToInsert(
       currency: appointment.currency,
       service_names: appointment.serviceNames,
       unpriced: appointment.unpriced,
+      note: "",
     }));
 }
 
@@ -123,6 +135,51 @@ export async function syncAppointmentPaymentCopies(
   return editsFromStoredRows(appointments, stored);
 }
 
+export function historyFromStoredRows(
+  stored: AppointmentPaymentHistoryRow[],
+): {
+  appointments: SquarePaymentRecord[];
+  edits: Record<string, AppointmentPaymentEdit>;
+  notes: Record<string, string>;
+} {
+  const appointments: SquarePaymentRecord[] = stored.map((row) => ({
+    id: row.booking_id,
+    customerId: row.customer_square_id,
+    createdAt: row.start_at,
+    amountMinor: row.catalog_amount_minor,
+    currency: row.currency,
+    serviceNames: row.service_names,
+    unpriced: row.unpriced,
+  }));
+  return {
+    appointments,
+    edits: editsFromStoredRows(appointments, stored),
+    notes: Object.fromEntries(stored.map((row) => [row.booking_id, row.note ?? ""])),
+  };
+}
+
+export async function fetchStoredAppointmentsForCustomer(
+  customerSquareId: string,
+): Promise<{
+  appointments: SquarePaymentRecord[];
+  edits: Record<string, AppointmentPaymentEdit>;
+  notes: Record<string, string>;
+}> {
+  const { data, error } = await supabase
+    .from("appointment_payments")
+    .select(
+      "booking_id, customer_square_id, start_at, catalog_amount_minor, paid_amount_minor, tip_amount_minor, product_amount_minor, currency, service_names, unpriced, note",
+    )
+    .eq("customer_square_id", customerSquareId)
+    .order("start_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return historyFromStoredRows((data ?? []) as AppointmentPaymentHistoryRow[]);
+}
+
 export async function saveAppointmentPayment(
   bookingId: string,
   edit: AppointmentPaymentEdit,
@@ -134,6 +191,16 @@ export async function saveAppointmentPayment(
       tip_amount_minor: edit.tipAmountMinor,
       product_amount_minor: edit.productAmountMinor,
     })
+    .eq("booking_id", bookingId);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function saveAppointmentNote(bookingId: string, note: string): Promise<void> {
+  const { error } = await supabase
+    .from("appointment_payments")
+    .update({ note })
     .eq("booking_id", bookingId);
   if (error) {
     throw new Error(error.message);

@@ -63,6 +63,31 @@ describe("appointmentForSession", () => {
     ).toEqual(new Set(["afternoon"]));
   });
 
+  it("does not mark a future booking completed from an earlier finished session", () => {
+    expect(
+      completedAppointmentIds(
+        [
+          {
+            customerSquareId: "c1",
+            startAt: Date.parse("2026-09-04T18:00:00.000Z"),
+            endAt: Date.parse("2026-09-04T19:00:00.000Z"),
+          },
+        ],
+        [
+          {
+            id: "october",
+            customerId: "c1",
+            createdAt: "2026-10-15T18:00:00.000Z",
+            amountMinor: 10_000,
+            currency: "CAD",
+            serviceNames: ["Retwist"],
+            unpriced: false,
+          },
+        ],
+      ),
+    ).toEqual(new Set());
+  });
+
   it("returns nothing when the session has no Square customer", () => {
     expect(
       appointmentForSession(

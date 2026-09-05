@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   copiesToInsert,
   editsFromStoredRows,
+  historyFromStoredRows,
 } from "./appointmentPayments";
 import type { SquarePaymentRecord } from "./paymentReport";
 
@@ -44,6 +45,44 @@ describe("editsFromStoredRows", () => {
   });
 });
 
+describe("historyFromStoredRows", () => {
+  it("rebuilds appointments and edits from stored copies without Square", () => {
+    expect(
+      historyFromStoredRows([
+        {
+          booking_id: "b1",
+          customer_square_id: "c1",
+          start_at: "2026-08-01T10:00:00Z",
+          catalog_amount_minor: 10_000,
+          paid_amount_minor: 8_000,
+          tip_amount_minor: 2_000,
+          product_amount_minor: 1_500,
+          currency: "CAD",
+          service_names: ["Retwist"],
+          unpriced: false,
+          note: "Used extra oil",
+        },
+      ]),
+    ).toEqual({
+      appointments: [
+        {
+          id: "b1",
+          customerId: "c1",
+          createdAt: "2026-08-01T10:00:00Z",
+          amountMinor: 10_000,
+          currency: "CAD",
+          serviceNames: ["Retwist"],
+          unpriced: false,
+        },
+      ],
+      edits: {
+        b1: { paidAmountMinor: 8_000, tipAmountMinor: 2_000, productAmountMinor: 1_500 },
+      },
+      notes: { b1: "Used extra oil" },
+    });
+  });
+});
+
 describe("copiesToInsert", () => {
   it("inserts only appointments that do not already have a stored copy", () => {
     expect(
@@ -63,6 +102,7 @@ describe("copiesToInsert", () => {
         currency: "CAD",
         service_names: ["Wash"],
         unpriced: false,
+        note: "",
       },
     ]);
   });

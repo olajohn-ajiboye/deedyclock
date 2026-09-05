@@ -47,6 +47,7 @@ export type Database = {
           currency: string
           customer_name: string
           customer_square_id: string | null
+          note: string
           paid_amount_minor: number
           product_amount_minor: number
           service_names: string[]
@@ -62,6 +63,7 @@ export type Database = {
           currency: string
           customer_name: string
           customer_square_id?: string | null
+          note?: string
           paid_amount_minor: number
           product_amount_minor?: number
           service_names?: string[]
@@ -77,6 +79,7 @@ export type Database = {
           currency?: string
           customer_name?: string
           customer_square_id?: string | null
+          note?: string
           paid_amount_minor?: number
           product_amount_minor?: number
           service_names?: string[]

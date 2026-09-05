@@ -1,5 +1,10 @@
 import type { SquarePaymentRecord } from "./paymentReport";
 
+function localDayKey(ms: number): string {
+  const date = new Date(ms);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
 export function completedAppointmentIds(
   sessions: Array<{ customerSquareId: string | null; startAt: number; endAt: number | null }>,
   appointments: SquarePaymentRecord[],
@@ -27,9 +32,12 @@ export function appointmentForSession(
 ): SquarePaymentRecord | undefined {
   if (!session.customerSquareId) return undefined;
 
+  const sessionDay = localDayKey(session.startAt);
   const candidates = appointments.filter(
     (appointment) =>
-      appointment.customerId === session.customerSquareId && !claimedIds.has(appointment.id),
+      appointment.customerId === session.customerSquareId &&
+      !claimedIds.has(appointment.id) &&
+      localDayKey(Date.parse(appointment.createdAt)) === sessionDay,
   );
   if (candidates.length === 0) return undefined;
 

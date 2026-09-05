@@ -1,71 +1,57 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { ArrowLeft, CalendarRange } from "lucide-react";
 import { AppointmentImages } from "@/components/AppointmentImages";
+import { AppointmentNoteField } from "@/components/AppointmentNoteField";
 import { CustomerNoteField } from "@/components/CustomerNoteField";
 import { useStore } from "@/lib/store";
 import { appointmentsForCustomer } from "@/lib/customerHistory";
-import { syncAppointmentPaymentCopies } from "@/lib/appointmentPayments";
+import { fetchStoredAppointmentsForCustomer } from "@/lib/appointmentPayments";
 import {
   buildPaymentReport,
   formatMoney,
-  getPaymentRange,
   type AppointmentPaymentEdit,
   type SquarePaymentRecord,
 } from "@/lib/paymentReport";
-import { fetchSquareBookedAppointments } from "@/lib/squarePayments";
 
 export default function CustomerProfilePage() {
   const { squareId: rawSquareId } = useParams<{ squareId: string }>();
   const squareId = rawSquareId ? decodeURIComponent(rawSquareId) : "";
   const customers = useStore((state) => state.customers);
-  const customersRef = useRef(customers);
-  customersRef.current = customers;
   const customer = customers.find((item) => item.squareId === squareId);
 
   const [appointments, setAppointments] = useState<SquarePaymentRecord[]>([]);
   const [edits, setEdits] = useState<Record<string, AppointmentPaymentEdit>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const yearRanges = useMemo(() => {
-    const now = new Date();
-    return [0, 1, 2, 3, 4].map((yearsAgo) => {
-      const anchor = new Date(now);
-      anchor.setFullYear(now.getFullYear() - yearsAgo);
-      return getPaymentRange("year", anchor);
-    });
-  }, []);
-
   useEffect(() => {
     if (!squareId) return;
-    const controller = new AbortController();
+    let cancelled = false;
     setLoading(true);
     setError(null);
 
-    Promise.all(yearRanges.map((range) => fetchSquareBookedAppointments(range, controller.signal)))
-      .then(async (pages) => {
-        const byId = new Map<string, SquarePaymentRecord>();
-        for (const records of pages) {
-          for (const record of records) byId.set(record.id, record);
-        }
-        const records = [...byId.values()];
-        const stored = await syncAppointmentPaymentCopies(records, customersRef.current);
-        if (controller.signal.aborted) return;
-        setAppointments(records);
-        setEdits(stored);
+    fetchStoredAppointmentsForCustomer(squareId)
+      .then((stored) => {
+        if (cancelled) return;
+        setAppointments(stored.appointments);
+        setEdits(stored.edits);
+        setNotes(stored.notes);
       })
       .catch((loadError) => {
-        if (loadError instanceof DOMException && loadError.name === "AbortError") return;
+        if (cancelled) return;
         setError(loadError instanceof Error ? loadError.message : "Could not load visits");
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!cancelled) setLoading(false);
       });
 
-    return () => controller.abort();
-  }, [yearRanges, squareId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [squareId]);
 
   const visits = useMemo(
     () => appointmentsForCustomer(appointments, squareId),
@@ -197,6 +183,14 @@ export default function CustomerProfilePage() {
                         ) : null}
                       </div>
                     </div>
+                    <AppointmentNoteField
+                      bookingId={visit.id}
+                      customerName={customer.name}
+                      note={notes[visit.id] ?? ""}
+                      onSaved={(next) =>
+                        setNotes((current) => ({ ...current, [visit.id]: next }))
+                      }
+                    />
                     <AppointmentImages
                       appointmentKey={visit.id}
                       customerName={customer.name}

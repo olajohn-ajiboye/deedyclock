@@ -2,15 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CustomerProfilePage from "./CustomerProfilePage";
-import { syncAppointmentPaymentCopies } from "@/lib/appointmentPayments";
-import { fetchSquareBookedAppointments } from "@/lib/squarePayments";
-
-vi.mock("@/lib/squarePayments", () => ({
-  fetchSquareBookedAppointments: vi.fn(),
-}));
+import { fetchStoredAppointmentsForCustomer } from "@/lib/appointmentPayments";
 
 vi.mock("@/lib/appointmentPayments", () => ({
-  syncAppointmentPaymentCopies: vi.fn(),
+  fetchStoredAppointmentsForCustomer: vi.fn(),
 }));
 
 vi.mock("@/lib/appointmentImages", () => ({
@@ -44,32 +39,28 @@ vi.mock("@/lib/store", () => ({
 
 describe("CustomerProfilePage", () => {
   beforeEach(() => {
-    vi.mocked(fetchSquareBookedAppointments).mockResolvedValue([
-      {
-        id: "b1",
-        customerId: "c1",
-        createdAt: "2026-08-20T12:00:00Z",
-        amountMinor: 12_500,
-        currency: "CAD",
-        serviceNames: ["Retwist"],
-        unpriced: false,
+    vi.mocked(fetchStoredAppointmentsForCustomer).mockResolvedValue({
+      appointments: [
+        {
+          id: "b1",
+          customerId: "c1",
+          createdAt: "2026-08-20T12:00:00Z",
+          amountMinor: 12_500,
+          currency: "CAD",
+          serviceNames: ["Retwist"],
+          unpriced: false,
+        },
+      ],
+      edits: {
+        b1: { paidAmountMinor: 10_000, tipAmountMinor: 2_000, productAmountMinor: 0 },
       },
-      {
-        id: "other",
-        customerId: "c2",
-        createdAt: "2026-08-21T12:00:00Z",
-        amountMinor: 5_000,
-        currency: "CAD",
-        serviceNames: ["Trim"],
-        unpriced: false,
+      notes: {
+        b1: "Used extra oil",
       },
-    ]);
-    vi.mocked(syncAppointmentPaymentCopies).mockResolvedValue({
-      b1: { paidAmountMinor: 10_000, tipAmountMinor: 2_000, productAmountMinor: 0 },
     });
   });
 
-  it("shows notes and that client's past appointments", async () => {
+  it("shows notes and that client's past appointments from stored copies", async () => {
     render(
       <MemoryRouter initialEntries={["/customers/c1"]}>
         <Routes>
@@ -82,8 +73,10 @@ describe("CustomerProfilePage", () => {
     expect(screen.getByRole("heading", { name: "Notes" })).toBeInTheDocument();
     expect(screen.getByText("Prefers silk press")).toBeInTheDocument();
     expect(screen.getByText("Retwist")).toBeInTheDocument();
-    expect(screen.queryByText("Trim")).not.toBeInTheDocument();
+    expect(screen.getByText("Used extra oil")).toBeInTheDocument();
+    expect(fetchStoredAppointmentsForCustomer).toHaveBeenCalledWith("c1");
     expect(screen.getByRole("button", { name: "Edit notes for Ada" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit visit note for Ada" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Take photo for Ada" })).toBeInTheDocument();
   });
 });

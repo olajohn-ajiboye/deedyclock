@@ -15,7 +15,7 @@ describe("mapSquareCustomer", () => {
         phone_number: "555-0100",
         email_address: "ada@example.com",
         note: "Prefers silk press",
-        version: 4,
+        version: "4",
       }),
     ).toEqual({
       squareId: "c1",

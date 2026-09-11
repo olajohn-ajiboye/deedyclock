@@ -17,9 +17,7 @@ export function mapSquareCustomer(value: unknown): SquareCustomerRecord {
   if (typeof customer.id !== "string" || customer.id === "") {
     throw new Error("Square customer has invalid id");
   }
-  if (typeof customer.version !== "number" || !Number.isSafeInteger(customer.version)) {
-    throw new Error(`Square customer ${customer.id} has invalid version`);
-  }
+  const version = parseSquareVersion(customer.version, `Square customer ${customer.id}`);
 
   const name =
     [customer.given_name, customer.family_name].filter((part) => typeof part === "string" && part).join(" ").trim() ||
@@ -35,8 +33,14 @@ export function mapSquareCustomer(value: unknown): SquareCustomerRecord {
     phone: typeof customer.phone_number === "string" ? customer.phone_number : undefined,
     email: typeof customer.email_address === "string" ? customer.email_address : undefined,
     note: typeof customer.note === "string" ? customer.note : "",
-    version: customer.version,
+    version,
   };
+}
+
+export function parseSquareVersion(value: unknown, label: string): number {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return value;
+  if (typeof value === "string" && /^(0|[1-9]\d*)$/.test(value)) return Number(value);
+  throw new Error(`${label} has invalid version`);
 }
 
 export function parseUpdateCustomerNoteRequest(value: unknown): {
@@ -57,10 +61,11 @@ export function parseUpdateCustomerNoteRequest(value: unknown): {
   if (body.note.length > SQUARE_CUSTOMER_NOTE_MAX) {
     throw new Error(`Customer notes must be ${SQUARE_CUSTOMER_NOTE_MAX} characters or fewer`);
   }
-  if (typeof body.version !== "number" || !Number.isSafeInteger(body.version) || body.version < 0) {
-    throw new Error("Customer note update has invalid version");
-  }
-  return { squareId: body.squareId, note: body.note, version: body.version };
+  return {
+    squareId: body.squareId,
+    note: body.note,
+    version: parseSquareVersion(body.version, "Customer note update"),
+  };
 }
 
 export function isUpdateCustomerNoteRequest(value: unknown): boolean {
@@ -84,16 +89,14 @@ export function parseSquareCustomersResponse(value: unknown): SquareCustomerReco
       if (typeof record.name !== "string" || record.name === "") {
         throw new Error(`Square customer ${record.squareId} has invalid name`);
       }
-      if (typeof record.version !== "number" || !Number.isSafeInteger(record.version)) {
-        throw new Error(`Square customer ${record.squareId} has invalid version`);
-      }
+      const version = parseSquareVersion(record.version, `Square customer ${record.squareId}`);
       return {
         squareId: record.squareId,
         name: record.name,
         phone: typeof record.phone === "string" ? record.phone : undefined,
         email: typeof record.email === "string" ? record.email : undefined,
         note: typeof record.note === "string" ? record.note : "",
-        version: record.version,
+        version,
       };
     }
     return mapSquareCustomer(customer);

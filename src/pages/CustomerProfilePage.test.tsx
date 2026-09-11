@@ -6,6 +6,7 @@ import { fetchStoredAppointmentsForCustomer } from "@/lib/appointmentPayments";
 
 vi.mock("@/lib/appointmentPayments", () => ({
   fetchStoredAppointmentsForCustomer: vi.fn(),
+  syncAppointmentNotesWithSquare: vi.fn(async (notes: Record<string, string>) => notes),
 }));
 
 vi.mock("@/lib/appointmentImages", () => ({

@@ -1,4 +1,5 @@
-import { corsHeaders, SQUARE_BASE } from "../_shared/square.ts";
+import { corsHeaders, SQUARE_BASE, squareErrorMessage } from "../_shared/square.ts";
+import { squareNoteForUpdate } from "../_shared/customerNotes.ts";
 import {
   isUpdateCustomerNoteRequest,
   mapSquareCustomer,
@@ -28,18 +29,41 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     if (isUpdateCustomerNoteRequest(body)) {
       const update = parseUpdateCustomerNoteRequest(body);
+      const currentRes = await fetch(
+        `${SQUARE_BASE}/customers/${encodeURIComponent(update.squareId)}`,
+        { headers: squareHeaders },
+      );
+      const currentPayload = await currentRes.json();
+      if (!currentRes.ok) {
+        return new Response(
+          JSON.stringify({
+            error: squareErrorMessage(currentPayload, "Could not load this client from Square"),
+            status: currentRes.status,
+            body: currentPayload,
+          }),
+          {
+            status: currentRes.status === 404 ? 404 : 502,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+      const current = mapSquareCustomer(currentPayload.customer);
       const res = await fetch(`${SQUARE_BASE}/customers/${encodeURIComponent(update.squareId)}`, {
         method: "PUT",
         headers: squareHeaders,
         body: JSON.stringify({
-          note: update.note,
-          version: update.version,
+          note: squareNoteForUpdate(update.note, current.note),
+          version: current.version,
         }),
       });
       const payload = await res.json();
       if (!res.ok) {
         return new Response(
-          JSON.stringify({ error: "Square API error", status: res.status, body: payload }),
+          JSON.stringify({
+            error: squareErrorMessage(payload, "Could not save the note to Square"),
+            status: res.status,
+            body: payload,
+          }),
           { status: res.status === 409 ? 409 : 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
@@ -62,7 +86,11 @@ Deno.serve(async (req) => {
       const listBody = await res.json();
       if (!res.ok) {
         return new Response(
-          JSON.stringify({ error: "Square API error", status: res.status, body: listBody }),
+          JSON.stringify({
+            error: squareErrorMessage(listBody, "Square API error"),
+            status: res.status,
+            body: listBody,
+          }),
           { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }

@@ -7,7 +7,7 @@ import { AppointmentNoteField } from "@/components/AppointmentNoteField";
 import { CustomerNoteField } from "@/components/CustomerNoteField";
 import { useStore } from "@/lib/store";
 import { appointmentsForCustomer } from "@/lib/customerHistory";
-import { fetchStoredAppointmentsForCustomer } from "@/lib/appointmentPayments";
+import { fetchStoredAppointmentsForCustomer, syncAppointmentNotesWithSquare } from "@/lib/appointmentPayments";
 import {
   buildPaymentReport,
   formatMoney,
@@ -34,11 +34,18 @@ export default function CustomerProfilePage() {
     setError(null);
 
     fetchStoredAppointmentsForCustomer(squareId)
-      .then((stored) => {
+      .then(async (stored) => {
         if (cancelled) return;
         setAppointments(stored.appointments);
         setEdits(stored.edits);
-        setNotes(stored.notes);
+        let notes = stored.notes;
+        try {
+          notes = await syncAppointmentNotesWithSquare(stored.notes);
+        } catch (syncError) {
+          console.warn("Visit notes could not sync from Square:", syncError);
+        }
+        if (cancelled) return;
+        setNotes(notes);
       })
       .catch((loadError) => {
         if (cancelled) return;

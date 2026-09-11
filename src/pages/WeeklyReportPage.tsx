@@ -1,9 +1,20 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { addWeeks, format, isSameDay } from "date-fns";
 import { ChevronLeft, ChevronRight, Download, Pencil } from "lucide-react";
 import { useStore, useNow } from "@/lib/store";
 import { AvatarTile } from "@/components/AvatarTile";
 import { Button } from "@/components/ui/button";
+import {
+  fetchStoredAppointmentsInRange,
+  syncAppointmentPaymentCopies,
+} from "@/lib/appointmentPayments";
+import {
+  formatMoney,
+  type AppointmentPaymentEdit,
+  type SquarePaymentRecord,
+} from "@/lib/paymentReport";
+import { appointmentForSession } from "@/lib/sessionAppointments";
+import { fetchSquareBookedAppointments } from "@/lib/squarePayments";
 import {
   durationMs,
   formatDuration,
@@ -30,6 +41,72 @@ export default function WeeklyReportPage() {
     () => sessionsInWeek(sessions, anchor),
     [sessions, anchor],
   );
+  const customersRef = useRef(customers);
+  customersRef.current = customers;
+  const [appointments, setAppointments] = useState<SquarePaymentRecord[]>([]);
+  const [edits, setEdits] = useState<Record<string, AppointmentPaymentEdit>>({});
+  const paymentRange = useMemo(() => {
+    const { start, end } = weekRange(anchor);
+    return {
+      beginTime: start.toISOString(),
+      endTime: new Date(end.getTime() + 1).toISOString(),
+    };
+  }, [anchor]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+
+    fetchStoredAppointmentsInRange(paymentRange.beginTime, paymentRange.endTime)
+      .then((stored) => {
+        if (cancelled) return;
+        setAppointments(stored.appointments);
+        setEdits(stored.edits);
+      })
+      .catch((loadError) => {
+        console.warn(
+          "Weekly paid amounts could not load from stored copies:",
+          loadError instanceof Error ? loadError.message : loadError,
+        );
+      });
+
+    fetchSquareBookedAppointments(paymentRange, controller.signal)
+      .then(async (records) => {
+        const synced = await syncAppointmentPaymentCopies(records, customersRef.current);
+        if (controller.signal.aborted || cancelled || records.length === 0) return;
+        setAppointments(records);
+        setEdits(synced);
+      })
+      .catch((loadError) => {
+        if (loadError instanceof DOMException && loadError.name === "AbortError") return;
+        console.warn(
+          "Weekly paid amounts could not refresh from Square:",
+          loadError instanceof Error ? loadError.message : loadError,
+        );
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [paymentRange]);
+
+  const amountsBySessionId = useMemo(() => {
+    const claimedIds = new Set<string>();
+    const amounts = new Map<string, { paidAmountMinor: number; tipAmountMinor: number; currency: string }>();
+    for (const session of [...weekSessions].sort((a, b) => a.startAt - b.startAt)) {
+      const appointment = appointmentForSession(session, appointments, claimedIds);
+      if (!appointment) continue;
+      claimedIds.add(appointment.id);
+      const edit = edits[appointment.id];
+      amounts.set(session.id, {
+        paidAmountMinor: edit?.paidAmountMinor ?? appointment.amountMinor,
+        tipAmountMinor: edit?.tipAmountMinor ?? 0,
+        currency: appointment.currency,
+      });
+    }
+    return amounts;
+  }, [weekSessions, appointments, edits]);
 
   const totalMs = weekSessions.reduce((acc, s) => acc + durationMs(s, now), 0);
 
@@ -289,6 +366,7 @@ export default function WeeklyReportPage() {
                         .slice()
                         .sort((a, b) => a.startAt - b.startAt)
                         .map((s, i) => {
+                          const amounts = amountsBySessionId.get(s.id);
                           return (
                             <div
                               key={s.id}
@@ -310,17 +388,28 @@ export default function WeeklyReportPage() {
                                   {s.endAt ? fmtTime(s.endAt) : "active"}
                                 </p>
                               </div>
-                              <p className="text-sm font-medium tabular-nums">
-                                {formatDuration(durationMs(s, now))}
-                              </p>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-lg h-9 w-9"
-                                onClick={() => setEditingId(s.id)}
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
+                              <div className="shrink-0 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <p className="text-sm font-medium tabular-nums">
+                                    {formatDuration(durationMs(s, now))}
+                                  </p>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-lg h-9 w-9"
+                                    onClick={() => setEditingId(s.id)}
+                                    aria-label={`Edit session for ${s.customerName}`}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                                {amounts ? (
+                                  <p className="text-xs text-muted-foreground tabular-nums pr-9">
+                                    {formatMoney(amounts.paidAmountMinor, amounts.currency)} ·{" "}
+                                    {formatMoney(amounts.tipAmountMinor, amounts.currency)} tip
+                                  </p>
+                                ) : null}
+                              </div>
                             </div>
                           );
                         })}

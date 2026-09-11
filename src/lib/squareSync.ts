@@ -6,10 +6,22 @@ import {
   parseUpdatedSquareCustomerResponse,
   type SquareCustomerRecord,
 } from "../../supabase/functions/_shared/squareCustomers";
+import {
+  parseBookingNotesResponse,
+  parseUpdatedBookingNoteResponse,
+  type SquareBookingNote,
+} from "../../supabase/functions/_shared/squareBookingNotes";
 
 export type SquareSyncStatus = "idle" | "syncing" | "success" | "error";
 
 let inflight: Promise<void> | null = null;
+
+function throwIfFunctionFailed(data: unknown, error: unknown) {
+  if (data && typeof data === "object" && typeof (data as { error?: unknown }).error === "string") {
+    throw new Error((data as { error: string }).error);
+  }
+  if (error) throw error instanceof Error ? error : new Error("Square request failed");
+}
 
 export async function syncCustomersFromSquare(opts?: { silent?: boolean }) {
   if (inflight) return inflight;
@@ -18,7 +30,7 @@ export async function syncCustomersFromSquare(opts?: { silent?: boolean }) {
       const { data, error } = await supabase.functions.invoke("square-customers", {
         body: {},
       });
-      if (error) throw error;
+      throwIfFunctionFailed(data, error);
       const customers = parseSquareCustomersResponse(data);
       store.replaceCustomersFromSquare(customers);
       if (!opts?.silent) {
@@ -44,11 +56,30 @@ export async function updateCustomerNoteOnSquare(input: {
   const { data, error } = await supabase.functions.invoke("square-customers", {
     body: input,
   });
-  if (error) throw error;
-  if (data && typeof data === "object" && typeof (data as { error?: unknown }).error === "string") {
-    throw new Error((data as { error: string }).error);
-  }
+  throwIfFunctionFailed(data, error);
   const customer = parseUpdatedSquareCustomerResponse(data);
   store.applySquareCustomer(customer);
   return customer;
+}
+
+export async function retrieveBookingNotesFromSquare(
+  bookingIds: string[],
+): Promise<SquareBookingNote[]> {
+  if (bookingIds.length === 0) return [];
+  const { data, error } = await supabase.functions.invoke("square-bookings", {
+    body: { bookingIds },
+  });
+  throwIfFunctionFailed(data, error);
+  return parseBookingNotesResponse(data);
+}
+
+export async function updateVisitNoteOnSquare(input: {
+  bookingId: string;
+  note: string;
+}): Promise<SquareBookingNote> {
+  const { data, error } = await supabase.functions.invoke("square-bookings", {
+    body: input,
+  });
+  throwIfFunctionFailed(data, error);
+  return parseUpdatedBookingNoteResponse(data);
 }

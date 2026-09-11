@@ -5,6 +5,10 @@ import {
   type AppointmentPaymentEdit,
   type SquarePaymentRecord,
 } from "@/lib/paymentReport";
+import {
+  retrieveBookingNotesFromSquare,
+  updateVisitNoteOnSquare,
+} from "@/lib/squareSync";
 
 export type { AppointmentPaymentEdit };
 
@@ -180,6 +184,63 @@ export async function fetchStoredAppointmentsForCustomer(
   return historyFromStoredRows((data ?? []) as AppointmentPaymentHistoryRow[]);
 }
 
+export async function fetchStoredAppointmentsInRange(
+  beginTime: string,
+  endTime: string,
+): Promise<{
+  appointments: SquarePaymentRecord[];
+  edits: Record<string, AppointmentPaymentEdit>;
+}> {
+  const { data, error } = await supabase
+    .from("appointment_payments")
+    .select(
+      "booking_id, customer_square_id, start_at, catalog_amount_minor, paid_amount_minor, tip_amount_minor, product_amount_minor, currency, service_names, unpriced, note",
+    )
+    .gte("start_at", beginTime)
+    .lt("start_at", endTime)
+    .order("start_at", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const stored = historyFromStoredRows((data ?? []) as AppointmentPaymentHistoryRow[]);
+  return { appointments: stored.appointments, edits: stored.edits };
+}
+
+async function persistAppointmentNote(bookingId: string, note: string): Promise<void> {
+  const { error } = await supabase
+    .from("appointment_payments")
+    .update({ note })
+    .eq("booking_id", bookingId);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function syncAppointmentNotesWithSquare(
+  localNotes: Record<string, string>,
+): Promise<Record<string, string>> {
+  const bookingIds = Object.keys(localNotes);
+  if (bookingIds.length === 0) return localNotes;
+
+  const fromSquare = await retrieveBookingNotesFromSquare(bookingIds);
+  const next = { ...localNotes };
+
+  for (const item of fromSquare) {
+    const squareNote = item.note.trim();
+    const localNote = (localNotes[item.bookingId] ?? "").trim();
+    if (squareNote && squareNote !== localNote) {
+      next[item.bookingId] = item.note;
+      await persistAppointmentNote(item.bookingId, item.note);
+    } else if (!squareNote && localNote) {
+      await updateVisitNoteOnSquare({ bookingId: item.bookingId, note: localNote });
+    }
+  }
+
+  return next;
+}
+
 export async function saveAppointmentPayment(
   bookingId: string,
   edit: AppointmentPaymentEdit,
@@ -198,11 +259,6 @@ export async function saveAppointmentPayment(
 }
 
 export async function saveAppointmentNote(bookingId: string, note: string): Promise<void> {
-  const { error } = await supabase
-    .from("appointment_payments")
-    .update({ note })
-    .eq("booking_id", bookingId);
-  if (error) {
-    throw new Error(error.message);
-  }
+  await updateVisitNoteOnSquare({ bookingId, note });
+  await persistAppointmentNote(bookingId, note);
 }
